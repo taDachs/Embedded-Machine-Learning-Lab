@@ -1,0 +1,70 @@
+{
+  "name": "EML Lab Development Container",
+  "privileged": true,
+  "remoteUser": "eml",
+  "forwardPorts": [8888],
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "USERNAME": "eml"
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:1": {
+      "version": "latest",
+      "configureZshAsDefaultShell": true
+    },
+    "ghcr.io/tadachs/devcontainer-features/cli-dev-utils:latest": {},
+    "ghcr.io/tadachs/devcontainer-features/my-dotfiles:latest": {
+      "username": "eml"
+    }
+  },
+  "workspaceFolder": "/home/eml/eml-lab",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/eml/eml-lab,type=bind",
+  "containerEnv": {
+    "DISPLAY": "unix:1"
+  },
+  "runArgs": [
+    "--net=host",
+    "-e",
+    "DISPLAY=${env:DISPLAY}",
+    "-e",
+    "TERM=${env:TERM}",
+    "-v",
+    "${env:SSH_AUTH_SOCK}:/tmp/ssh-agent.socket",
+    "-e",
+    "SSH_AUTH_SOCK=/tmp/ssh-agent.socket"
+  ],
+  "mounts": [
+    {
+      "source": "/tmp/.X11-unix",
+      "target": "/tmp/.X11-unix",
+      "type": "bind",
+      "consistency": "cached"
+    },
+    {
+      "source": "/dev/dri",
+      "target": "/dev/dri",
+      "type": "bind",
+      "consistency": "cached"
+    },
+
+    {
+      "source": "${env:HOME}/.local/share/nvim/lazy",
+      "target": "/home/eml/.local/share/nvim/lazy",
+      "type": "bind"
+    }
+  ],
+  "initializeCommand": {
+    "create-config-mounts": "mkdir -p $HOME/.local/share/nvim/lazy"
+  },
+  "onCreateCommand": {
+    "create-config-mounts": "mkdir -p /home/eml/.local/share/nvim && sudo chown -R eml /home/eml/.local",
+    "install-nvim-appimage-0.8.1": "sudo apt update && sudo apt install fuse wget && wget https://github.com/neovim/neovim/releases/download/v0.8.1/nvim.appimage && chmod +x nvim.appimage && mv nvim.appimage $HOME/.local/bin/nvim"
+  },
+  "postCreateCommand": {
+    "chown-ws": "sudo chown -R eml /home/eml",
+    "apt-update": "sudo apt update",
+    "pip-install-requirements": "pip3 install -r requirements.txt"
+  }
+}

@@ -2,16 +2,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class TinyYoloV2(nn.Module):
 
+class TinyYoloV2(nn.Module):
     def __init__(self, num_classes=20):
         super().__init__()
 
-        anchors = ((1.08, 1.19),
+        anchors = (
+            (1.08, 1.19),
             (3.42, 4.41),
             (6.63, 11.38),
             (9.42, 5.11),
-            (16.62, 10.52),)
+            (16.62, 10.52),
+        )
 
         self.register_buffer("anchors", torch.tensor(anchors))
         self.num_classes = num_classes
@@ -93,17 +95,25 @@ class TinyYoloV2(nn.Module):
 
             anchors = self.anchors.to(dtype=x.dtype, device=x.device)
             range_y, range_x, = torch.meshgrid(
-                    torch.arange(nH, dtype=x.dtype, device=x.device),
-                    torch.arange(nW, dtype=x.dtype, device=x.device)
+                torch.arange(nH, dtype=x.dtype, device=x.device),
+                torch.arange(nW, dtype=x.dtype, device=x.device),
             )
             anchor_x, anchor_y = anchors[:, 0], anchors[:, 1]
 
-            x = torch.cat([
-                (x[:, :, :, :, 0:1].sigmoid() + range_x[None, None, :, :, None]) / nW, #x center
-                (x[:, :, :, :, 1:2].sigmoid() + range_y[None, None, :, :, None]) / nH, #y center
-                (x[:, :, :, :, 2:3].exp() * anchor_x[None, :, None, None, None])/ nW, # Width
-                (x[:, :, :, :, 3:4].exp() * anchor_y[None, :, None, None, None]) /nH, # Height
-                x[:, :, :, :, 4:5].sigmoid(), #confidence
-                x[:, :, :, :, 5:].softmax(-1),], -1)
-        
+            x = torch.cat(
+                [
+                    (x[:, :, :, :, 0:1].sigmoid() + range_x[None, None, :, :, None])
+                    / nW,  # x center
+                    (x[:, :, :, :, 1:2].sigmoid() + range_y[None, None, :, :, None])
+                    / nH,  # y center
+                    (x[:, :, :, :, 2:3].exp() * anchor_x[None, :, None, None, None])
+                    / nW,  # Width
+                    (x[:, :, :, :, 3:4].exp() * anchor_y[None, :, None, None, None])
+                    / nH,  # Height
+                    x[:, :, :, :, 4:5].sigmoid(),  # confidence
+                    x[:, :, :, :, 5:].softmax(-1),
+                ],
+                -1,
+            )
+
         return x
