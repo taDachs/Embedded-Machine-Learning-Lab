@@ -20,7 +20,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     && apt-get install -y python3-pip git git-lfs python3-venv python3-tk
 
 RUN pip3 install --upgrade pip \
-    && pip3 install virtualenv pre-commit tldr python-lsp-server[all] pylint black==21.12b0
+    && pip3 install virtualenv pre-commit tldr python-lsp-server[all] pylint black==21.12b0 mypy
 
 
 USER $USERNAME
