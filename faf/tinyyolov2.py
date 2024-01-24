@@ -7,7 +7,7 @@ class TinyYoloV2(nn.Module):
     def __init__(self, num_classes=20):
         super().__init__()
 
-        anchors = (
+        self._anchors = (
             (1.08, 1.19),
             (3.42, 4.41),
             (6.63, 11.38),
@@ -15,7 +15,7 @@ class TinyYoloV2(nn.Module):
             (16.62, 10.52),
         )
 
-        self.register_buffer("anchors", torch.tensor(anchors))
+        self.register_buffer("anchors", torch.tensor(self._anchors))
         self.num_classes = num_classes
 
         self.pad = nn.ReflectionPad2d((0, 1, 0, 1))
@@ -44,7 +44,7 @@ class TinyYoloV2(nn.Module):
         self.conv8 = nn.Conv2d(1024, 1024, 3, 1, 1, bias=False)
         self.bn8 = nn.BatchNorm2d(1024)
 
-        self.conv9 = nn.Conv2d(1024, len(anchors) * (5 + num_classes), 1, 1, 0)
+        self.conv9 = nn.Conv2d(1024, len(self._anchors) * (5 + num_classes), 1, 1, 0)
 
     def forward(self, x, yolo=True):
 
@@ -117,3 +117,52 @@ class TinyYoloV2(nn.Module):
             )
 
         return x
+
+
+class PrunedTinyYoloV2(TinyYoloV2):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._register_load_state_dict_pre_hook(self._sd_hook)
+
+    def _sd_hook(self, state_dict, prefix, *_):
+        for key in state_dict:
+            if "conv" in key and "weight" in key:
+                n = int(key.split("conv")[1].split(".weight")[0])
+
+                dim_in = state_dict[f"conv{n}.weight"].shape[1]
+                dim_out = state_dict[f"conv{n}.weight"].shape[0]
+
+                conv = nn.Conv2d(dim_in, dim_out, 3, 1, padding=1, bias=False)
+                bn = nn.BatchNorm2d(dim_out)
+                if n == 1:
+                    self.conv1 = conv
+                    self.bn1 = bn
+                elif n == 2:
+                    self.conv2 = conv
+                    self.bn2 = bn
+                elif n == 3:
+                    self.conv3 = conv
+                    self.bn3 = bn
+                elif n == 4:
+                    self.conv4 = conv
+                    self.bn4 = bn
+                elif n == 5:
+                    self.conv5 = conv
+                    self.bn5 = bn
+                elif n == 6:
+                    self.conv6 = conv
+                    self.bn6 = bn
+                elif n == 7:
+                    self.conv7 = conv
+                    self.bn7 = bn
+                elif n == 8:
+                    self.conv8 = conv
+                    self.bn8 = bn
+
+        self.conv9 = nn.Conv2d(
+            state_dict["conv8.weight"].shape[1],
+            len(self._anchors) * (5 + self.num_classes),
+            1,
+            1,
+            0,
+        )

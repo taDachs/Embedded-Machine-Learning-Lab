@@ -125,12 +125,12 @@ def perform_stripping_step(
 
 if __name__ == "__main__":
     net, results = perform_stripping_step(
-        "weights/voc_pretrained.pt", torch.device("cpu"), num_epochs=15
+        "weights/voc_pretrained.pt", torch.device("cuda:0"), num_epochs=15
     )
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs("weights", exist_ok=True)
-    torch.save(net, f"weights/only_person_{timestamp}.pt")
+    torch.save(net.state_dict(), f"weights/only_person_{timestamp}.pt")
 
     os.makedirs("results", exist_ok=True)
     with open(os.path.join("results", f"{timestamp}.json"), "w+") as f:
