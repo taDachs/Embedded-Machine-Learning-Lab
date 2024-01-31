@@ -1,5 +1,3 @@
-import copy
-
 import torch
 
 from faf.tinyyolov2 import TinyYoloV2
