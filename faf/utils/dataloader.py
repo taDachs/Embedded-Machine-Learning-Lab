@@ -112,19 +112,23 @@ class VOCTransform:
             return tf.functional.to_tensor(image), target_vectors
 
 
-def VOCDataLoader(train=True, batch_size=32, shuffle=False):
+def VOCDataLoader(train=True, batch_size=32, shuffle=False, path=None):
+    if path is None:
+        path = "data/"
     if train:
         image_set = "train"
     else:
         image_set = "val"
 
-    if not os.path.exists("data/VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg"):
+    if not os.path.exists(
+        os.path.join(path, "VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg")
+    ):
         dataset = torchvision.datasets.VOCDetection(
-            "data/", year="2012", image_set=image_set, download=True
+            path, year="2012", image_set=image_set, download=True
         )
 
     dataset = torchvision.datasets.VOCDetection(
-        "data/",
+        path,
         year="2012",
         image_set=image_set,
         download=False,
@@ -133,25 +137,55 @@ def VOCDataLoader(train=True, batch_size=32, shuffle=False):
     return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-def VOCDataLoaderPerson(train=True, batch_size=32, shuffle=False):
+def VOCDataLoaderPerson(train=True, batch_size=32, shuffle=False, path=None):
+    if path is None:
+        path = "data/"
     if train:
         image_set = "train"
     else:
         image_set = "val"
 
-    if not os.path.exists("data/VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg"):
+    if not os.path.exists(
+        os.path.join(path, "VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg")
+    ):
         dataset = torchvision.datasets.VOCDetection(
-            "data/", year="2012", image_set=image_set, download=True
+            path, year="2012", image_set=image_set, download=True
         )
 
     dataset = torchvision.datasets.VOCDetection(
-        "data/",
+        path,
         year="2012",
         image_set=image_set,
         download=False,
         transforms=VOCTransform(train=train, only_person=True),
     )
-    with open("data/person_indices.json", "r") as fd:
+    with open(os.path.join(path, "person_indices.json"), "r") as fd:
         indices = list(json.load(fd)[image_set])
     dataset = torch.utils.data.Subset(dataset, indices)
     return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+
+
+def voc_only_person_dataset(train: bool, path: str) -> torch.utils.data.Dataset:
+    if train:
+        image_set = "train"
+    else:
+        image_set = "val"
+
+    if not os.path.exists(
+        os.path.join(path, "VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg")
+    ):
+        dataset = torchvision.datasets.VOCDetection(
+            path, year="2012", image_set=image_set, download=True
+        )
+
+    dataset = torchvision.datasets.VOCDetection(
+        path,
+        year="2012",
+        image_set=image_set,
+        download=False,
+        transforms=VOCTransform(train=train, only_person=True),
+    )
+    with open(os.path.join(path, "person_indices.json"), "r") as fd:
+        indices = list(json.load(fd)[image_set])
+    dataset = torch.utils.data.Subset(dataset, indices)
+    return dataset

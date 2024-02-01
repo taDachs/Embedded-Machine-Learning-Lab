@@ -5,6 +5,8 @@ faf stands for fast-as-fuck
 ## TODO:
 
 - [ ] person-only detection
+  - [ ] transfer weights
+  - [ ] finetuning
 - [ ] batch norm inference optimization
 - [ ] pruning
 - [ ] inference framework
