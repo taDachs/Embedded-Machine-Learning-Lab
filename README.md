@@ -9,8 +9,8 @@ faf stands for fast-as-fuck
   - [x] finetuning
 - [x] batch norm inference optimization
 - [x] pruning
-- [ ] integration
-- [ ] inference framework
+- [x] integration
+- [x] inference framework
 - [ ] detection pipeline
 
 optional:
