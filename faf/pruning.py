@@ -1,15 +1,98 @@
 from typing import Dict
-import os
 import copy
 import torch
-from torchinfo import summary
 from torch.utils.data import DataLoader
-from datetime import datetime
-import json
+import logging
 
-from faf.utils.dataloader import voc_only_person_dataset
-from faf.tinyyolov2 import PrunedTinyYoloV2, TinyYoloV2
-from faf.person_only import eval_epoch
+from .tinyyolov2 import TinyYoloV2
+from .pipeline import Step
+from .metrics import test_precision, test_net_macs
+from .training import train
+from .utils.dataloader import voc_only_person_dataset
+
+
+class Pruning(Step):
+    yaml_tag = "!pruning"
+
+    def __init__(
+        self,
+        prune_ratio: float = 0.5,
+        target_acc: float = 0.3,
+        num_eval_batches: int = 5,
+        num_train_epochs: int = 3,
+        learning_rate: float = 1e-3,
+        batch_size: int = 128,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.prune_ratio = prune_ratio
+        self.target_acc = target_acc
+        self.num_eval_batches = num_eval_batches
+        self.num_train_epochs = num_train_epochs
+        self.learning_rate = learning_rate
+        self.batch_size = batch_size
+
+    def run(self, net):
+        return iterative_prune(
+            net,
+            self.prune_ratio,
+            self.target_acc,
+            self.num_eval_batches,
+            self.num_train_epochs,
+            self.learning_rate,
+            self.batch_size,
+            self.data_path,
+            self.device,
+        )
+
+
+def iterative_prune(
+    net: TinyYoloV2,
+    prune_ratio: float,
+    target_acc: float,
+    num_eval_batches: int,
+    num_train_epochs: int,
+    learning_rate: float,
+    batch_size: int,
+    data_path: str,
+    device: torch.device,
+) -> TinyYoloV2:
+    previous_model = net
+    test_ds = voc_only_person_dataset(train=False, path=data_path)
+    testloader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+
+    aps = []
+    sizes = []
+    ap, _, _ = test_precision(net, testloader, device, num_batches=num_eval_batches)
+    size = test_net_macs(net)
+
+    logging.info(f"Pruning: starting with AP: {ap} Size: {size}")
+
+    aps.append(ap)
+    sizes.append(size)
+    while ap > target_acc:
+        previous_model = net
+        net = prune_net(net, prune_ratio)
+        train(net, num_train_epochs, learning_rate, batch_size, data_path, device)
+        ap, _, _ = test_precision(net, testloader, device, num_batches=num_eval_batches)
+        size = test_net_macs(net)
+        aps.append(ap)
+        sizes.append(size)
+        logging.info(f"Pruning: current AP: {ap} Size: {size}")
+
+    logging.info(f"Pruning: {ap} < {target_acc}")
+    return previous_model  # always take the previous model
+
+
+def prune_net(net: TinyYoloV2, prune_ratio: float):
+    sd = net.state_dict()
+    sd_pruned = l1_structured_pruning(sd, prune_ratio)
+    sd_pruned = densify_state_dict(sd_pruned)
+    pruned_net = TinyYoloV2(1, net.use_bias, net.use_batch_norm)
+    pruned_net.load_state_dict(sd_pruned)
+
+    return pruned_net
 
 
 def l1_structured_pruning(state_dict: Dict, prune_ratio: float) -> Dict:
@@ -55,41 +138,8 @@ def densify_state_dict(state_dict: Dict) -> Dict:
 
         state_dict[w_idx] = w[good_indices]
 
-        if i == 9:  # last layer has bias
+        # some layers have bias
+        if b_idx in state_dict:
             state_dict[b_idx] = state_dict[b_idx][good_indices]
 
     return state_dict
-
-
-def net_macs(model_class: torch.nn.Module, state_dict: Dict) -> int:
-    net = model_class(1)
-    net.load_state_dict(state_dict)
-    res = summary(net, (1, 3, 320, 320), verbose=0)
-    return res.total_mult_adds
-
-
-if __name__ == "__main__":
-    device = torch.device("cuda:0")
-    sd = torch.load("./weights/only_person_20240124-122019.pt")
-    net = TinyYoloV2(1)
-    net.load_state_dict(sd)
-    print(net_macs(TinyYoloV2, sd))
-
-    sd_pruned = l1_structured_pruning(sd, 0.5)
-    sd_pruned = densify_state_dict(sd_pruned)
-    pruned_net = PrunedTinyYoloV2(1)
-    pruned_net.load_state_dict(sd_pruned)
-    print(net_macs(PrunedTinyYoloV2, sd_pruned))
-
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    os.makedirs("weights", exist_ok=True)
-    torch.save(pruned_net.state_dict(), f"weights/only_person_pruned_{timestamp}.pt")
-
-    batch_size = 128
-    data_path = "./data/"
-    ds_test = voc_only_person_dataset(train=False, path=data_path)
-    loader_test = DataLoader(ds_test, batch_size=batch_size, shuffle=True)
-    epoch_result_unpruned = eval_epoch(net, loader_test, device, single_batch=True)
-    epoch_result_pruned = eval_epoch(pruned_net, loader_test, device, single_batch=True)
-    print(f"Unpruned Time: {epoch_result_unpruned['time']}")
-    print(f"Pruned Time: {epoch_result_pruned['time']}")

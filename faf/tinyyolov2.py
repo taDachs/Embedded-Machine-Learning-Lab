@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class TinyYoloV2(nn.Module):
-    def __init__(self, num_classes=20):
+    def __init__(self, num_classes=20, use_bias=False, use_batch_norm=True):
         super().__init__()
 
         self._anchors = (
@@ -14,77 +14,103 @@ class TinyYoloV2(nn.Module):
             (9.42, 5.11),
             (16.62, 10.52),
         )
+        self.use_bias = use_bias
+        self.use_batch_norm = use_batch_norm
 
         self.register_buffer("anchors", torch.tensor(self._anchors))
         self.num_classes = num_classes
 
         self.pad = nn.ReflectionPad2d((0, 1, 0, 1))
 
-        self.conv1 = nn.Conv2d(3, 16, 3, 1, 1, bias=False)
-        self.bn1 = nn.BatchNorm2d(16)
+        self.conv1 = nn.Conv2d(3, 16, 3, 1, 1, bias=use_bias)
+        self.conv2 = nn.Conv2d(16, 32, 3, 1, 1, bias=use_bias)
+        self.conv3 = nn.Conv2d(32, 64, 3, 1, 1, bias=use_bias)
+        self.conv4 = nn.Conv2d(64, 128, 3, 1, 1, bias=use_bias)
+        self.conv5 = nn.Conv2d(128, 256, 3, 1, 1, bias=use_bias)
+        self.conv6 = nn.Conv2d(256, 512, 3, 1, 1, bias=use_bias)
+        self.conv7 = nn.Conv2d(512, 1024, 3, 1, 1, bias=use_bias)
+        self.conv8 = nn.Conv2d(1024, 1024, 3, 1, 1, bias=use_bias)
 
-        self.conv2 = nn.Conv2d(16, 32, 3, 1, 1, bias=False)
-        self.bn2 = nn.BatchNorm2d(32)
-
-        self.conv3 = nn.Conv2d(32, 64, 3, 1, 1, bias=False)
-        self.bn3 = nn.BatchNorm2d(64)
-
-        self.conv4 = nn.Conv2d(64, 128, 3, 1, 1, bias=False)
-        self.bn4 = nn.BatchNorm2d(128)
-
-        self.conv5 = nn.Conv2d(128, 256, 3, 1, 1, bias=False)
-        self.bn5 = nn.BatchNorm2d(256)
-
-        self.conv6 = nn.Conv2d(256, 512, 3, 1, 1, bias=False)
-        self.bn6 = nn.BatchNorm2d(512)
-
-        self.conv7 = nn.Conv2d(512, 1024, 3, 1, 1, bias=False)
-        self.bn7 = nn.BatchNorm2d(1024)
-
-        self.conv8 = nn.Conv2d(1024, 1024, 3, 1, 1, bias=False)
-        self.bn8 = nn.BatchNorm2d(1024)
+        if use_batch_norm:
+            self.bn1 = nn.BatchNorm2d(16)
+            self.bn2 = nn.BatchNorm2d(32)
+            self.bn3 = nn.BatchNorm2d(64)
+            self.bn4 = nn.BatchNorm2d(128)
+            self.bn5 = nn.BatchNorm2d(256)
+            self.bn6 = nn.BatchNorm2d(512)
+            self.bn7 = nn.BatchNorm2d(1024)
+            self.bn8 = nn.BatchNorm2d(1024)
 
         self.conv9 = nn.Conv2d(1024, len(self._anchors) * (5 + num_classes), 1, 1, 0)
+
+        self._register_load_state_dict_pre_hook(self._sd_hook)
+
+    def _sd_hook(self, state_dict, prefix, *_):
+        for key in state_dict:
+            if "conv" in key and "weight" in key:
+                n = int(key.split("conv")[1].split(".weight")[0])
+
+                if n == 9:
+                    continue
+
+                dim_in = state_dict[f"conv{n}.weight"].shape[1]
+                dim_out = state_dict[f"conv{n}.weight"].shape[0]
+
+                conv = nn.Conv2d(dim_in, dim_out, 3, 1, padding=1, bias=self.use_bias)
+
+                setattr(self, f"conv{n}", conv)
+
+                if self.use_batch_norm:
+                    bn = nn.BatchNorm2d(dim_out)
+                    setattr(self, f"bn{n}", bn)
+
+        self.conv9 = nn.Conv2d(
+            state_dict["conv8.weight"].shape[1],
+            len(self._anchors) * (5 + self.num_classes),
+            1,
+            1,
+            0,
+        )
 
     def forward(self, x, yolo=True):
 
         x = self.conv1(x)
-        x = self.bn1(x)
+        x = self.bn1(x) if self.use_batch_norm else x
         x = F.max_pool2d(x, kernel_size=2, stride=2)
         x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
 
         x = self.conv2(x)
-        x = self.bn2(x)
+        x = self.bn2(x) if self.use_batch_norm else x
         x = F.max_pool2d(x, kernel_size=2, stride=2)
         x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
 
         x = self.conv3(x)
-        x = self.bn3(x)
+        x = self.bn3(x) if self.use_batch_norm else x
         x = F.max_pool2d(x, kernel_size=2, stride=2)
         x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
 
         x = self.conv4(x)
-        x = self.bn4(x)
+        x = self.bn4(x) if self.use_batch_norm else x
         x = F.max_pool2d(x, kernel_size=2, stride=2)
         x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
 
         x = self.conv5(x)
-        x = self.bn5(x)
+        x = self.bn5(x) if self.use_batch_norm else x
         x = F.max_pool2d(x, kernel_size=2, stride=2)
         x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
 
         x = self.conv6(x)
-        x = self.bn6(x)
+        x = self.bn6(x) if self.use_batch_norm else x
         x = self.pad(x)
         x = F.max_pool2d(x, kernel_size=2, stride=1)
         x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
 
         x = self.conv7(x)
-        x = self.bn7(x)
+        x = self.bn7(x) if self.use_batch_norm else x
         x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
 
         x = self.conv8(x)
-        x = self.bn8(x)
+        x = self.bn8(x) if self.use_batch_norm else x
         x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
 
         x = self.conv9(x)
@@ -118,51 +144,15 @@ class TinyYoloV2(nn.Module):
 
         return x
 
+    @classmethod
+    def from_saved_state_dict(cls, path: str):
+        sd = torch.load(path)
+        use_batch_norm = any("bn" in k for k in sd)
+        use_bias = any(f"conv{i}.bias" in sd for i in range(1, 9))
+        last_dim = sd["conv9.bias"].shape[0]
 
-class PrunedTinyYoloV2(TinyYoloV2):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._register_load_state_dict_pre_hook(self._sd_hook)
+        num_classes = last_dim // sd["anchors"].shape[0] - 5
 
-    def _sd_hook(self, state_dict, prefix, *_):
-        for key in state_dict:
-            if "conv" in key and "weight" in key:
-                n = int(key.split("conv")[1].split(".weight")[0])
-
-                dim_in = state_dict[f"conv{n}.weight"].shape[1]
-                dim_out = state_dict[f"conv{n}.weight"].shape[0]
-
-                conv = nn.Conv2d(dim_in, dim_out, 3, 1, padding=1, bias=False)
-                bn = nn.BatchNorm2d(dim_out)
-                if n == 1:
-                    self.conv1 = conv
-                    self.bn1 = bn
-                elif n == 2:
-                    self.conv2 = conv
-                    self.bn2 = bn
-                elif n == 3:
-                    self.conv3 = conv
-                    self.bn3 = bn
-                elif n == 4:
-                    self.conv4 = conv
-                    self.bn4 = bn
-                elif n == 5:
-                    self.conv5 = conv
-                    self.bn5 = bn
-                elif n == 6:
-                    self.conv6 = conv
-                    self.bn6 = bn
-                elif n == 7:
-                    self.conv7 = conv
-                    self.bn7 = bn
-                elif n == 8:
-                    self.conv8 = conv
-                    self.bn8 = bn
-
-        self.conv9 = nn.Conv2d(
-            state_dict["conv8.weight"].shape[1],
-            len(self._anchors) * (5 + self.num_classes),
-            1,
-            1,
-            0,
-        )
+        net = TinyYoloV2(num_classes, use_bias, use_batch_norm)
+        net.load_state_dict(sd)
+        return net
