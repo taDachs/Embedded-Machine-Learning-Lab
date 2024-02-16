@@ -1,22 +1,32 @@
 import torch
 
-from faf.tinyyolov2 import TinyYoloV2
-from faf.fusedtinyyolov2 import FusedTinyYoloV2
+from .tinyyolov2 import TinyYoloV2
+from .pipeline import Step
 
-def operator_fusion(net: TinyYoloV2) -> FusedTinyYoloV2:
+
+class OperatorFusion(Step):
+    yaml_tag = "!operator_fusion"
+
+    def run(self, net):
+        return operator_fusion(net)
+
+
+def operator_fusion(net: TinyYoloV2) -> TinyYoloV2:
     sd = net.state_dict()
     fused_sd = {}
 
     for i in range(1, 9):
         conv_w = sd[f"conv{i}.weight"]
-        conv_b = 0 # Bias is disabled for Conv2d layers in TinyYoloV2
+        conv_b = sd.get(f"conv{i}.bias", 0)
 
         bn_w = sd[f"bn{i}.weight"]
         bn_b = sd[f"bn{i}.bias"]
         bn_rm = sd[f"bn{i}.running_mean"]
         bn_rv = sd[f"bn{i}.running_var"]
 
-        fused_conv, fused_bias = fuse_conv_bn_weights(conv_w, conv_b, bn_rm, bn_rv, bn_w, bn_b)
+        fused_conv, fused_bias = fuse_conv_bn_weights(
+            conv_w, conv_b, bn_rm, bn_rv, bn_w, bn_b
+        )
         fused_sd[f"conv{i}.weight"] = fused_conv
         fused_sd[f"conv{i}.bias"] = fused_bias
 
@@ -25,7 +35,9 @@ def operator_fusion(net: TinyYoloV2) -> FusedTinyYoloV2:
     fused_sd["conv9.weight"] = sd["conv9.weight"]
     fused_sd["conv9.bias"] = sd["conv9.bias"]
 
-    fused_net = FusedTinyYoloV2(num_classes=net.num_classes)
+    fused_net = TinyYoloV2(
+        num_classes=net.num_classes, use_bias=True, use_batch_norm=False
+    )
     fused_net.load_state_dict(fused_sd)
     return fused_net
 

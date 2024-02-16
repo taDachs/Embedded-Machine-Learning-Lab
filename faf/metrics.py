@@ -1,9 +1,18 @@
+import time
+from faf.utils.yolo import filter_boxes, nms
+from torchinfo import summary
+
 import torch
 import numpy as np
 
 from typing import List, Tuple
-from faf.utils.loss import iou
-import matplotlib.pyplot as plt
+from .utils.loss import iou
+import tqdm
+
+
+def test_net_macs(net) -> int:
+    res = summary(net, (1, 3, 320, 320), verbose=0)
+    return res.total_mult_adds
 
 
 def precision_recall(
@@ -129,22 +138,39 @@ def ap(precision: List[List], recall: List[List]) -> float:
     return np.mean(np.array(out))
 
 
-def display_roc(precision: List[List], recall: List[List]) -> None:
-    """
-    Displays the ROC
-    expects:
-        precision as List of Lists
-        recall as List of Lists
-    returns:
-        None
-    """
-    recall = np.mean(np.array(recall), axis=0)
-    precision = np.mean(np.array(precision), axis=0)
+def test_net_time(net, testloader, device):
 
-    plt.plot(recall, precision)
-    plt.xlim((0, 1.1))
-    plt.ylim((0, 1.1))
-    plt.xlabel("recall")
-    plt.ylabel("precision")
-    plt.title("precision over recall")
-    plt.show()
+    batch, _ = next(iter(testloader))
+    net.to(device)
+    batch = batch.to(device)
+    t_now = time.time()
+    net(batch)
+    t_stop = time.time()
+    t = t_stop - t_now
+
+    return t
+
+
+def test_precision(
+    net, testloader, device, filter_threshold=0.0, nms_threshold=0.5, num_batches=None
+):
+    net.to(device)
+    precisions = []
+    recalls = []
+    for i, (batch, targets) in enumerate(tqdm.tqdm(testloader, desc="[EVAL]")):
+        if num_batches is not None and i >= num_batches:
+            break
+
+        batch = batch.to(device)
+        targets = targets.to(device)
+        outputs = net(batch)
+        outputs = filter_boxes(outputs, filter_threshold)
+        outputs = nms(outputs, nms_threshold)
+
+        for output, target in zip(outputs, targets):
+            precision, recall = precision_recall_levels(target, output)
+            precisions.append(precision)
+            recalls.append(recall)
+    average_precision = ap(precisions, recalls)
+
+    return average_precision, precisions, recalls
