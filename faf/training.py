@@ -2,7 +2,7 @@ import torch
 import logging
 
 from torch.utils.data import DataLoader
-from .utils.dataloader import voc_only_person_dataset
+from .data.dataloader import voc_only_person_dataset
 from .utils.loss import YoloLoss
 from .pipeline import Step
 
