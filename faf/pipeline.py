@@ -8,6 +8,7 @@ from abc import abstractmethod
 class Step(yaml.YAMLObject):
     device = None
     data_path = None
+    augment = False
 
     def __init__(self, name: str = None):
         super().__init__()
@@ -23,6 +24,9 @@ class Step(yaml.YAMLObject):
 
     def set_data_path(self, data_path: str):
         self.data_path = data_path
+
+    def set_augment(self, augment: bool):
+        self.augment = augment
 
     @classmethod
     def from_yaml(cls, loader, node):

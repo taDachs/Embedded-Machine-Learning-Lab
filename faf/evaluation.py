@@ -1,8 +1,7 @@
-from torch.utils.data import DataLoader
 import torch
 
 from .metrics import test_net_macs, test_precision, test_net_time
-from .utils.dataloader import voc_only_person_dataset
+from faf.data.dataloader import VOCDataLoaderPerson
 import tqdm
 
 
@@ -16,8 +15,7 @@ def eval_model(
 ):
     net.eval()
 
-    ds_test = voc_only_person_dataset(train=False, path=data_path)
-    loader_test = DataLoader(ds_test, batch_size=batch_size, shuffle=False)
+    loader_test = VOCDataLoaderPerson(augment=False, batch_size=batch_size, shuffle=False)
 
     size = test_net_macs(net)
     times = []

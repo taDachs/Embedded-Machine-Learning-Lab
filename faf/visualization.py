@@ -7,8 +7,7 @@ from .utils.viz import num_to_class
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from faf.utils.dataloader import voc_only_person_dataset
-from torch.utils.data import DataLoader
+from faf.data.dataloader import VOCDataLoaderPerson
 from faf.utils.yolo import nms, filter_boxes
 
 
@@ -328,8 +327,7 @@ def plot_average_precision_against_time(
 
 
 def generate_samples(net, draw_gt=True, num=None):
-    ds = voc_only_person_dataset(train=False, path="./data")
-    loader = DataLoader(ds, batch_size=1, shuffle=True)
+    loader = VOCDataLoaderPerson(augment=False, batch_size=1, shuffle=True)
 
     images = []
 

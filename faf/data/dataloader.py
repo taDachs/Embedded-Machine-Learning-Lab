@@ -51,6 +51,8 @@ class VOCTransform:
         self.only_person = only_person
         if augmentation:
             self.augmentation = augmentation
+        else:
+            self.augmentation = None
 
     def __call__(self, image, target):
         num_bboxes = 10
@@ -109,7 +111,7 @@ class VOCTransform:
         elif target_vectors.shape[0] > num_bboxes:
             target_vectors = target_vectors[:num_bboxes]
 
-        if self.augmentation:
+        if self.augmentation is not None:
             # In person-only mode:
             # a[4] == 1 , a[5] == 0 if person
             # a[4] == 0 , a[5] == -1 otherwise
@@ -117,15 +119,10 @@ class VOCTransform:
             image, target_vectors = self.augmentation(
                 width, height, np.array(image), target_vectors)
 
-            return (
-                tf.functional.to_tensor(image),
-                target_vectors,
-            )
-        else:
-            return tf.functional.to_tensor(image), target_vectors
+        return tf.functional.to_tensor(image), target_vectors
 
 
-def VOCDataLoader(augmentation, train=True, batch_size=32, shuffle=False, path=None):
+def VOCDataLoader(augment=False, train=True, batch_size=32, shuffle=False, path=None):
     if path is None:
         path = "data/"
     if train:
@@ -140,6 +137,11 @@ def VOCDataLoader(augmentation, train=True, batch_size=32, shuffle=False, path=N
             path, year="2012", image_set=image_set, download=True
         )
 
+    if augment:
+        augmentation = Augmentation(crop_p=0)
+    else:
+        augmentation = None
+
     dataset = torchvision.datasets.VOCDetection(
         path,
         year="2012",
@@ -152,7 +154,7 @@ def VOCDataLoader(augmentation, train=True, batch_size=32, shuffle=False, path=N
                                        shuffle=shuffle)
 
 
-def VOCDataLoaderPerson(augmentation,
+def VOCDataLoaderPerson(augment=False,
                         train=True,
                         batch_size=32,
                         shuffle=False,
@@ -171,6 +173,11 @@ def VOCDataLoaderPerson(augmentation,
             path, year="2012", image_set=image_set, download=True
         )
 
+    if augment:
+        augmentation = Augmentation(crop_p=0)
+    else:
+        augmentation = None
+
     dataset = torchvision.datasets.VOCDetection(
         path,
         year="2012",
@@ -179,33 +186,9 @@ def VOCDataLoaderPerson(augmentation,
         transforms=VOCTransform(augmentation=augmentation,
                                 only_person=True),
     )
+
     with open(os.path.join(path, "person_indices.json"), "r") as fd:
         indices = list(json.load(fd)[image_set])
+
     dataset = torch.utils.data.Subset(dataset, indices)
     return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
-
-
-def voc_only_person_dataset(train: bool, path: str) -> torch.utils.data.Dataset:
-    if train:
-        image_set = "train"
-    else:
-        image_set = "val"
-
-    if not os.path.exists(
-        os.path.join(path, "VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg")
-    ):
-        dataset = torchvision.datasets.VOCDetection(
-            path, year="2012", image_set=image_set, download=True
-        )
-
-    dataset = torchvision.datasets.VOCDetection(
-        path,
-        year="2012",
-        image_set=image_set,
-        download=False,
-        transforms=VOCTransform(train=train, only_person=True),
-    )
-    with open(os.path.join(path, "person_indices.json"), "r") as fd:
-        indices = list(json.load(fd)[image_set])
-    dataset = torch.utils.data.Subset(dataset, indices)
-    return dataset
