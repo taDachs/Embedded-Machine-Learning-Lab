@@ -4,6 +4,7 @@ import logging
 import torch
 from faf.experiment import Experiment
 from faf.evaluation import eval_model
+from faf.inference import to_onnx
 import os
 import pandas as pd
 
@@ -34,7 +35,7 @@ if __name__ == "__main__":
         "--no-eval", action="store_true", help="if set, doesn't run eval"
     )
     parser.add_argument(
-        "--no-pipeline",
+        "--no-cache",
         action="store_true",
         help="if set, doesn't run step and loads weights from previous run",
     )
@@ -78,12 +79,12 @@ if __name__ == "__main__":
 
     for i, step in enumerate(experiment.steps):
         step_weights_path = os.path.join(weights_dir, f"step_{i}_{step.name}.pt")
-        if not args.no_pipeline:
+        if args.no_cache or not os.path.exists(step_weights_path):
             logging.info(f"Performing Step {i}: {step.name}")
             step.set_device(train_device)
             step.set_data_path(args.data)
-            net = step.run(net)
             net.to(train_device)
+            net = step.run(net)
 
             logging.info(f"Saving weights to {step_weights_path}")
             torch.save(net.state_dict(), step_weights_path)
@@ -93,6 +94,7 @@ if __name__ == "__main__":
 
         if not args.no_eval:
             logging.info("Evaluating Step")
+            net.to(eval_device)
             results = eval_model(
                 net,
                 args.data,
@@ -105,10 +107,28 @@ if __name__ == "__main__":
             df = df.append(results, ignore_index=True)
             logging.info(f"Average Precision: {results['average_precision']}")
 
-    if not args.no_pipeline:
+    if args.no_cache or not os.path.exists(step_weights_path):
         final_weights_path = os.path.join(weights_dir, "final.pt")
         logging.info(f"Saving final weights to {final_weights_path}")
         torch.save(net.state_dict(), final_weights_path)
 
-    logging.info(f"Saving results to {results_table_path}")
-    df.to_csv(results_table_path, index=False)
+    # onnx test
+    net.to(torch.device("cpu"))
+    inference = to_onnx(net, weights_dir)
+    if not args.no_eval:
+        results = eval_model(
+            inference,
+            args.data,
+            device=torch.device("cpu"),
+            batch_size=64,
+            num_test_batches=10,
+            iterations=100,
+            test_size=False,
+        )
+        results["step"] = "onnx_runtime"
+        df = df.append(results, ignore_index=True)
+        logging.info(f"Average Precision: {results['average_precision']}")
+
+    if not args.no_eval:
+        logging.info(f"Saving results to {results_table_path}")
+        df.to_csv(results_table_path, index=False)

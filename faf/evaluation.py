@@ -12,6 +12,7 @@ def eval_model(
     batch_size=128,
     iterations=10,
     num_test_batches=None,
+    test_size=True,
     device=torch.device("cpu"),
 ):
     net.eval()
@@ -19,7 +20,7 @@ def eval_model(
     ds_test = voc_only_person_dataset(train=False, path=data_path)
     loader_test = DataLoader(ds_test, batch_size=batch_size, shuffle=False)
 
-    size = test_net_macs(net)
+    size = test_net_macs(net) if test_size else float("NaN")
     times = []
     for i in tqdm.tqdm(range(iterations), desc="[EVAL]"):
         time = test_net_time(net, loader_test, device)
