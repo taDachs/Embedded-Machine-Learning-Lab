@@ -6,7 +6,7 @@
 # This is an example notebook for the camera usage
 
 
-from faf.utils.camera import CameraDisplay
+from faf.utils.camera import CameraServer
 import time
 import cv2
 
@@ -37,13 +37,19 @@ def callback(image):
 
 
 # Initialize the camera with the callback
-cam = CameraDisplay(callback)
+cam = CameraServer(callback)
 
 
 # The camera stream can be started with cam.start()
 # The callback gets asynchronously called (can be stopped with cam.stop())
 cam.start()
 
+while True:
+    try:
+        pass
+    except:
+        break
+        
 
 # The camera should always be stopped and released for a new camera is instantiated (calling CameraDisplay(callback) again)
 cam.stop()

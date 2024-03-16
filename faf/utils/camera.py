@@ -3,6 +3,9 @@ from IPython.display import display
 from jetcam.utils import bgr8_to_jpeg
 import numpy as np
 import time
+import socket
+import pickle
+import struct
 
 import traitlets
 import threading
@@ -130,6 +133,68 @@ class CameraDisplay:
             self._processing_frame = False
 
     def start(self):
+        if self.camera is None:
+            self.initialize_camera()
+        self.camera.running = True
+        self._processing_frame = False
+
+    def stop(self):
+        self.camera.running = False
+
+    def __del__(self):
+        self.release()
+
+class CameraServer:
+    def __init__(self, img_to_display_img_callback, lazy_camera_init: bool = False):
+        self.img_to_display_img_callback = img_to_display_img_callback
+        self.lazy_camera_init = lazy_camera_init
+        if not self.lazy_camera_init:
+            self.initialize_camera()
+        else:
+            self.camera = None
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #display(self.image_widget)
+
+        self._processing_frame = False
+        self.fps = None
+
+    def initialize_camera(self):
+        print("Initializing camera...")
+        self.camera = Camera(
+            width=640,
+            height=360,
+            capture_width=1280,
+            capture_height=720,
+            capture_fps=30,
+        )
+        self.camera.observe(self._camera_callback, names="value")
+
+    def release(self):
+        if not self.camera is None:
+            self.camera.running = False
+            if self.camera.cap is not None:
+                self.camera.cap.release()
+            print("Camera released")
+            return
+
+    def _camera_callback(self, change):
+        if not self._processing_frame:
+            self._processing_frame = True
+            image = change["new"]
+            if not self.img_to_display_img_callback is None:
+                image = self.img_to_display_img_callback(image)
+            frame_data = pickle.dumps(image)
+            self.client_socket.sendall(struct.pack("Q", len(frame_data)))
+            self.client_socket.sendall(frame_data)
+            self._processing_frame = False
+
+    def start(self):
+        self.server_socket.bind(("0.0.0.0", 1234))
+        self.server_socket.listen(5)
+        print("Server is listening...")
+        self.client_socket, client_address = self.server_socket.accept()
+        print(f"Connection from {client_address} accepted")
+
         if self.camera is None:
             self.initialize_camera()
         self.camera.running = True
