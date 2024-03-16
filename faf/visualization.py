@@ -352,3 +352,11 @@ def generate_samples(net, draw_gt=True, num=None):
         images.append(image)
 
     return images
+
+
+def vis_single_image(net, image):
+    outputs = net(image[None, ...])
+    outputs = filter_boxes(outputs, 0.1)
+    outputs = nms(outputs, 0.25)
+    image = visualize_result(image[None, ...], outputs)
+    return image
