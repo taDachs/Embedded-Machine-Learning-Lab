@@ -1,6 +1,9 @@
 import torch
-from torchinfo import summary
-import os, json
+import os
+import json
+import pandas as pd
+import numpy as np
+from PIL import Image
 
 import torchvision
 from torchvision import transforms as tf
@@ -189,3 +192,64 @@ def voc_only_person_dataset(train: bool, path: str) -> torch.utils.data.Dataset:
         indices = list(json.load(fd)[image_set])
     dataset = torch.utils.data.Subset(dataset, indices)
     return dataset
+
+
+def tiktok_dancing_dataset(train: bool, path: str) -> torch.utils.data.Dataset:
+    return TikTokDancingDataset(
+        csv_file=os.path.join(path, "tiktok_dancing", "df.csv"),
+        root_dir=os.path.join(
+            path,
+            "tiktok_dancing",
+            "segmentation_full_body_tik_tok_2615_img",
+            "segmentation_full_body_tik_tok_2615_img",
+        ),
+        transform=VOCTransform(train=train, only_person=True),
+    )
+
+
+class TikTokDancingDataset(torch.utils.data.Dataset):
+    def __init__(self, csv_file, root_dir, transform=None):
+        self.ds_frame = pd.read_csv(csv_file)
+        self.root_dir = root_dir
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.ds_frame)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        img_name = os.path.join(self.root_dir, self.ds_frame.iloc[idx, 1])
+        image = Image.open(img_name).convert("RGB")
+        mask_name = os.path.join(self.root_dir, self.ds_frame.iloc[idx, 2])
+        mask = Image.open(mask_name)
+        mask = torch.tensor(np.array(mask))
+        rows, cols = torch.nonzero(mask[..., 0], as_tuple=True)
+
+        # Find the corners of the bounding box
+        x_min = torch.min(cols)
+        y_min = torch.min(rows)
+        x_max = torch.max(cols)
+        y_max = torch.max(rows)
+
+        targets = {
+            "annotation": {
+                "object": [
+                    {
+                        "bndbox": {
+                            "xmin": x_min,
+                            "xmax": x_max,
+                            "ymin": y_min,
+                            "ymax": y_max,
+                        },
+                        "name": "person",
+                    }
+                ]
+            }
+        }
+
+        if self.transform:
+            image, targets = self.transform(image, targets)
+
+        return image, targets
