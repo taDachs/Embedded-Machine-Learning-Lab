@@ -12,6 +12,9 @@ class Augmentation:
         h_flip_p=0.5,
         v_flip_p=0.5,
         contrast_p=0.2,
+        noise_p=0.0,
+        noise_intensity=0.5,
+        jitter_p=0.0,
         seed=42,
     ):
         self.crop_p = crop_p
@@ -19,6 +22,9 @@ class Augmentation:
         self.h_flip_p = h_flip_p
         self.v_flip_p = v_flip_p
         self.contrast_p = contrast_p
+        self.noise_p = noise_p
+        self.noise_intensity = noise_intensity
+        self.jitter_p = jitter_p
         self.seed = seed
         random.seed(self.seed)
 
@@ -27,13 +33,13 @@ class Augmentation:
     ):
         transform = A.Compose(
             [
-                A.RandomCrop(
-                    height=int(height * 0.75), width=int(width * 0.75), p=self.crop_p
-                ),
+                A.RandomSizedBBoxSafeCrop(height=height, width=width, erosion_rate=0.5, always_apply=False, p=self.crop_p),
                 A.RandomRotate90(p=self.rotate_p),
                 A.HorizontalFlip(p=self.h_flip_p),
                 A.VerticalFlip(p=self.v_flip_p),
                 A.RandomBrightnessContrast(p=self.contrast_p),
+                A.ISONoise(intensity=(self.noise_intensity, self.noise_intensity)),
+                A.ColorJitter(p=self.jitter_p),
             ],
             bbox_params=A.BboxParams(format="yolo", min_area=100, min_visibility=0.1),
         )
