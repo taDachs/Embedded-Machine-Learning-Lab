@@ -80,11 +80,9 @@ class VOCTransform:
         target_vectors = []
         for item in target:
             x0 = int(item["bndbox"]["xmin"]) * scale + diff_width // 2
-            w = (int(item["bndbox"]["xmax"]) -
-                 int(item["bndbox"]["xmin"])) * scale
+            w = (int(item["bndbox"]["xmax"]) - int(item["bndbox"]["xmin"])) * scale
             y0 = int(item["bndbox"]["ymin"]) * scale + diff_height // 2
-            h = (int(item["bndbox"]["ymax"]) -
-                 int(item["bndbox"]["ymin"])) * scale
+            h = (int(item["bndbox"]["ymax"]) - int(item["bndbox"]["ymin"])) * scale
 
             target_vector = [
                 (x0 + w / 2) / width,
@@ -102,8 +100,7 @@ class VOCTransform:
             else:
                 target_vectors.append(target_vector)
 
-        target_vectors = list(
-            sorted(target_vectors, key=lambda x: x[2] * x[3]))
+        target_vectors = list(sorted(target_vectors, key=lambda x: x[2] * x[3]))
         target_vectors = torch.tensor(target_vectors)
         if target_vectors.shape[0] < num_bboxes:
             zeros = torch.zeros((num_bboxes - target_vectors.shape[0], 6))
@@ -118,7 +115,8 @@ class VOCTransform:
             # a[4] == 0 , a[5] == -1 otherwise
 
             image, target_vectors = self.augmentation(
-                width, height, np.array(image), target_vectors)
+                width, height, np.array(image), target_vectors
+            )
 
         return tf.functional.to_tensor(image), target_vectors
 
@@ -150,18 +148,15 @@ def VOCDataLoader(augment=False, train=True, batch_size=32, shuffle=False, path=
         download=False,
         transforms=VOCTransform(augmentation=augmentation),
     )
-    return torch.utils.data.DataLoader(dataset,
-                                       batch_size=batch_size,
-                                       shuffle=shuffle)
+    return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-def VOCDataLoaderPerson(augment=False,
-                        train=True,
-                        batch_size=32,
-                        shuffle=False,
-                        path=None):
+def VOCDataLoaderPerson(
+    augment=False, train=True, batch_size=32, shuffle=False, path=None
+):
     if path is None:
         path = "data/"
+
     if train:
         image_set = "train"
     else:
@@ -184,8 +179,7 @@ def VOCDataLoaderPerson(augment=False,
         year="2012",
         image_set=image_set,
         download=False,
-        transforms=VOCTransform(augmentation=augmentation,
-                                only_person=True),
+        transforms=VOCTransform(augmentation=augmentation, only_person=True),
     )
 
     with open(os.path.join(path, "person_indices.json"), "r") as fd:
@@ -254,3 +248,82 @@ class TikTokDancingDataset(torch.utils.data.Dataset):
             image, targets = self.transform(image, targets)
 
         return image, targets
+
+
+def TikTokDataLoaderPerson(
+    augment=False, train=True, batch_size=32, shuffle=False, path=None
+):
+    if path is None:
+        path = "data/"
+
+    if augment:
+        augmentation = Augmentation(crop_p=0)
+    else:
+        augmentation = None
+
+    dataset = TikTokDancingDataset(
+        csv_file=os.path.join(path, "tiktok_dancing", "df.csv"),
+        root_dir=os.path.join(
+            path,
+            "tiktok_dancing",
+            "segmentation_full_body_tik_tok_2615_img",
+            "segmentation_full_body_tik_tok_2615_img",
+        ),
+        transform=VOCTransform(augmentation=augmentation, only_person=True),
+    )
+
+    return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+
+
+def FullDataLoaderPerson(
+    augment=False, train=True, batch_size=32, shuffle=False, path=None
+):
+    if path is None:
+        path = "data/"
+
+    if train:
+        image_set = "train"
+    else:
+        image_set = "val"
+
+    if augment:
+        augmentation = Augmentation(crop_p=0)
+    else:
+        augmentation = None
+
+    tiktok_dataset = TikTokDancingDataset(
+        csv_file=os.path.join(path, "tiktok_dancing", "df.csv"),
+        root_dir=os.path.join(
+            path,
+            "tiktok_dancing",
+            "segmentation_full_body_tik_tok_2615_img",
+            "segmentation_full_body_tik_tok_2615_img",
+        ),
+        transform=VOCTransform(augmentation=augmentation, only_person=True),
+    )
+
+    if not os.path.exists(
+        os.path.join(path, "VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg")
+    ):
+        voc_dataset = torchvision.datasets.VOCDetection(
+            path, year="2012", image_set=image_set, download=True
+        )
+
+    voc_dataset = torchvision.datasets.VOCDetection(
+        path,
+        year="2012",
+        image_set=image_set,
+        download=False,
+        transforms=VOCTransform(augmentation=augmentation, only_person=True),
+    )
+
+    with open(os.path.join(path, "person_indices.json"), "r") as fd:
+        indices = list(json.load(fd)[image_set])
+
+    voc_dataset = torch.utils.data.Subset(voc_dataset, indices)
+
+    full_dataset = torch.utils.data.ConcatDataset([tiktok_dataset, voc_dataset])
+
+    return torch.utils.data.DataLoader(
+        full_dataset, batch_size=batch_size, shuffle=shuffle
+    )
