@@ -35,7 +35,7 @@ class Augmentation:
                 A.VerticalFlip(p=self.v_flip_p),
                 A.RandomBrightnessContrast(p=self.contrast_p),
             ], bbox_params=A.BboxParams(format='yolo',
-                                        min_area=1024,
+                                        min_area=100,
                                         min_visibility=0.1)
         )
 
@@ -45,7 +45,7 @@ class Augmentation:
         # Keep only bounding boxes that are non-zero
         first_zero_row = 0
         for t in targets:
-            if t[:4].sum() != 0:
+            if torch.all(t[:4] != 0):
                 first_zero_row += 1
         targets = targets[:first_zero_row]
 
@@ -54,10 +54,10 @@ class Augmentation:
 
         bboxes = torch.Tensor()
         if transformed['bboxes']:
-            bboxes = torch.cat([torch.Tensor(i) for i in transformed['bboxes']]).unsqueeze(dim=0)
+            bboxes = torch.stack([torch.Tensor(i) for i in transformed['bboxes']])
 
         padding = num_boxes - len(bboxes)
         pad_tensor = torch.zeros((padding, 6))
-
+        pad_tensor[..., -1] = -1
         bboxes = torch.cat((bboxes, pad_tensor))
         return image, bboxes

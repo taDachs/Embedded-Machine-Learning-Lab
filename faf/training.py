@@ -2,10 +2,10 @@ import torch
 import logging
 
 from torch.utils.data import DataLoader
-from .data.dataloader import voc_only_person_dataset
 from .utils.loss import YoloLoss
 from .pipeline import Step
 
+from faf.data.dataloader import VOCDataLoaderPerson
 from .tinyyolov2 import TinyYoloV2
 import tqdm
 
@@ -37,6 +37,7 @@ class FineTune(Step):
             data_path=self.data_path,
             device=self.device,
             only_last=self.only_last,
+            augment=self.augment
         )
 
         return net
@@ -55,6 +56,7 @@ def train_epoch(
     pbar = tqdm.tqdm(enumerate(loader), total=len(loader))
     pbar.set_description(f"[TRAINING] Loss: {0:.4f}")
     for idx, (input, target) in pbar:
+
         input = input.to(device)
         target = target.to(device)
         optimizer.zero_grad()
@@ -72,7 +74,7 @@ def train_epoch(
 
 
 def train(
-    net, num_epochs, learning_rate, batch_size, data_path, device, only_last=False
+        net, num_epochs, learning_rate, batch_size, data_path, device, only_last=False, augment=False
 ):
     if only_last:
         for key, param in net.named_parameters():
@@ -84,8 +86,7 @@ def train(
         lr=learning_rate,
     )
     criterion = YoloLoss(anchors=net.anchors)
-    ds = voc_only_person_dataset(train=True, path=data_path)
-    loader = DataLoader(ds, batch_size=batch_size, shuffle=True)
+    loader = VOCDataLoaderPerson(augment=augment, batch_size=batch_size, shuffle=True, path=data_path)
 
     loss = []
     for i in range(num_epochs):

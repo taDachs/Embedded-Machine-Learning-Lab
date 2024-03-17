@@ -1,14 +1,13 @@
 from typing import Dict
 import copy
 import torch
-from torch.utils.data import DataLoader
 import logging
 
 from .tinyyolov2 import TinyYoloV2
 from .pipeline import Step
 from .metrics import test_precision, test_net_macs
 from .training import train
-from .utils.dataloader import voc_only_person_dataset
+from faf.data.dataloader import VOCDataLoaderPerson
 
 
 class Pruning(Step):
@@ -44,6 +43,7 @@ class Pruning(Step):
             self.batch_size,
             self.data_path,
             self.device,
+            self.augment
         )
 
 
@@ -57,10 +57,14 @@ def iterative_prune(
     batch_size: int,
     data_path: str,
     device: torch.device,
+    augment: bool
 ) -> TinyYoloV2:
     previous_model = net
-    test_ds = voc_only_person_dataset(train=False, path=data_path)
-    testloader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+
+    testloader = VOCDataLoaderPerson(augment=augment,
+                                     batch_size=batch_size,
+                                     shuffle=False,
+                                     path=data_path)
 
     aps = []
     sizes = []
