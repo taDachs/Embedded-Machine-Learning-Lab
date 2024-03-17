@@ -20,3 +20,7 @@ optional:
 - [ ] more data
 - [ ] profiling
 - [ ] quantization
+
+## Datasets
+
+- [tiktok dancing](https://www.kaggle.com/datasets/tapakah68/segmentation-full-body-tiktok-dancing-dataset)

@@ -59,15 +59,15 @@ def precision_recall(
             gt_idx = gt_idx_thr[idx]
             pr_idx = pred_idx_thr[idx]
 
-        if (gt_idx not in gt_match_idx) and (pr_idx not in pred_match_idx):
-            gt_match_idx.append(gt_idx)
-            pred_match_idx.append(pr_idx)
+            if (gt_idx not in gt_match_idx) and (pr_idx not in pred_match_idx):
+                gt_match_idx.append(gt_idx)
+                pred_match_idx.append(pr_idx)
 
-    tp = len(gt_match_idx)
-    fp = len(predicted_boxes) - len(pred_match_idx)
-    fn = len(ground_truth_boxes) - len(gt_match_idx)
+        tp = len(gt_match_idx)
+        fp = len(predicted_boxes) - len(pred_match_idx)
+        fn = len(ground_truth_boxes) - len(gt_match_idx)
 
-    return tp, fp, fn
+        return tp, fp, fn
 
 
 def precision_recall_levels(
