@@ -2,6 +2,7 @@
 from faf.tinyyolov2 import TinyYoloV2
 import logging
 import torch
+from faf.data.dataloader import FullDataLoaderPerson, VOCDataLoaderPerson
 from faf.experiment import Experiment
 from faf.evaluation import eval_model
 from faf.inference import to_onnx
@@ -16,6 +17,9 @@ if __name__ == "__main__":
         format="[%(asctime)s %(levelname)-2s] %(message)s",
         datefmt="%m-%d %H:%M",
     )
+
+    pil_logger = logging.getLogger("PIL")
+    pil_logger.setLevel(logging.INFO)
 
     parser = argparse.ArgumentParser("run_pipeline")
 
@@ -69,7 +73,7 @@ if __name__ == "__main__":
             device=eval_device,
             batch_size=64,
             num_test_batches=10,
-            iterations=100,
+            iterations=10,
         )
         headers = ["step"] + list(results.keys())
         df = pd.DataFrame(columns=headers)
@@ -83,6 +87,9 @@ if __name__ == "__main__":
             logging.info(f"Performing Step {i}: {step.name}")
             step.set_device(train_device)
             step.set_data_path(args.data)
+            step.set_augment(experiment.augment)
+            step.set_ds_f(FullDataLoaderPerson)
+            # step.set_ds_f(VOCDataLoaderPerson)
             net.to(train_device)
             net = step.run(net)
 
@@ -101,14 +108,14 @@ if __name__ == "__main__":
                 device=eval_device,
                 batch_size=64,
                 num_test_batches=10,
-                iterations=100,
+                iterations=10,
             )
             results["step"] = step.name
             df = df.append(results, ignore_index=True)
             logging.info(f"Average Precision: {results['average_precision']}")
 
-    if args.no_cache or not os.path.exists(step_weights_path):
-        final_weights_path = os.path.join(weights_dir, "final.pt")
+    final_weights_path = os.path.join(weights_dir, "final.pt")
+    if args.no_cache or not os.path.exists(final_weights_path):
         logging.info(f"Saving final weights to {final_weights_path}")
         torch.save(net.state_dict(), final_weights_path)
 

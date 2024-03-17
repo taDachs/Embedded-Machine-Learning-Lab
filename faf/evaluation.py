@@ -1,7 +1,7 @@
 import torch
 
 from .metrics import test_net_macs, test_precision, test_net_time
-from faf.data.dataloader import VOCDataLoaderPerson
+from faf.data.dataloader import VOCDataLoaderPerson, FullDataLoaderPerson
 import tqdm
 
 
@@ -16,7 +16,10 @@ def eval_model(
 ):
     net.eval()
 
-    loader_test = VOCDataLoaderPerson(augment=False, batch_size=batch_size, shuffle=False)
+    # loader_test = VOCDataLoaderPerson(augment=False, batch_size=batch_size, shuffle=False)
+    loader_test = FullDataLoaderPerson(
+        augment=False, train=False, batch_size=batch_size, shuffle=False
+    )
 
     size = test_net_macs(net) if test_size else float("NaN")
     times = []

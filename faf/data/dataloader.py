@@ -4,6 +4,7 @@ import json
 import pandas as pd
 import numpy as np
 from PIL import Image
+import random
 
 from .augmentation import Augmentation
 
@@ -189,6 +190,83 @@ def VOCDataLoaderPerson(
     return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
+class HumanDataset(torch.utils.data.Dataset):
+    def __init__(self, subset_name, root_dir, transform=None):
+        self.root_dir = root_dir
+        self.transform = transform
+
+        assert subset_name in ["train", "val"]
+
+        self.image_dir = os.path.join(root_dir, "images", subset_name)
+        self.label_dir = os.path.join(root_dir, "labels", subset_name)
+
+        self.sample_list = sorted(
+            [name.split(".")[0] for name in os.listdir(self.image_dir)]
+        )
+
+    def __len__(self):
+        return len(self.sample_list)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        img_name = os.path.join(self.image_dir, self.sample_list[idx] + ".jpg")
+        image = Image.open(img_name).convert("RGB")
+        w, h = image.size
+        label_name = os.path.join(self.label_dir, self.sample_list[idx] + ".txt")
+
+        with open(label_name, "r") as f:
+            lines = f.readlines()
+
+        objects = []
+        for line in lines:
+            line = line.strip().split(" ")[1:]  # first one is label --> always human
+            cx = w * float(line[0])
+            cy = h * float(line[1])
+            wb = w * float(line[2])
+            hb = h * float(line[3])
+
+            bbox = {
+                "xmin": cx - wb / 2,
+                "ymin": cy - hb / 2,
+                "xmax": cx + wb / 2,
+                "ymax": cy + hb / 2,
+            }
+            objects.append({"bndbox": bbox, "name": "person"})
+
+        targets = {"annotation": {"object": objects}}
+
+        if self.transform:
+            image, targets = self.transform(image, targets)
+
+        return image, targets
+
+
+def HumanDatasetDataLoaderPerson(
+    augment=False, train=True, batch_size=32, shuffle=False, path=None
+):
+    subset_name = "train" if train else "val"
+    if path is None:
+        path = "data/"
+
+    if augment:
+        augmentation = Augmentation(crop_p=0)
+    else:
+        augmentation = None
+
+    dataset = HumanDataset(
+        subset_name=subset_name,
+        root_dir=os.path.join(
+            path,
+            "human_dataset",
+        ),
+        transform=VOCTransform(augmentation=augmentation, only_person=True),
+    )
+
+    return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+
+
 def tiktok_dancing_dataset(train: bool, path: str) -> torch.utils.data.Dataset:
     return TikTokDancingDataset(
         csv_file=os.path.join(path, "tiktok_dancing", "df.csv"),
@@ -308,7 +386,6 @@ def FullDataLoaderPerson(
         voc_dataset = torchvision.datasets.VOCDetection(
             path, year="2012", image_set=image_set, download=True
         )
-
     voc_dataset = torchvision.datasets.VOCDetection(
         path,
         year="2012",
@@ -322,7 +399,24 @@ def FullDataLoaderPerson(
 
     voc_dataset = torch.utils.data.Subset(voc_dataset, indices)
 
-    full_dataset = torch.utils.data.ConcatDataset([tiktok_dataset, voc_dataset])
+    human_dataset = HumanDataset(
+        subset_name=image_set,
+        root_dir=os.path.join(
+            path,
+            "human_dataset",
+        ),
+        transform=VOCTransform(augmentation=augmentation, only_person=True),
+    )
+
+    full_dataset = torch.utils.data.ConcatDataset(
+        [tiktok_dataset, voc_dataset, human_dataset]
+    )
+
+    # shuffle once to break up the datasets
+    indices = list(range(len(full_dataset)))
+    random.seed(420)
+    random.shuffle(indices)
+    full_dataset = torch.utils.data.Subset(full_dataset, indices)
 
     return torch.utils.data.DataLoader(
         full_dataset, batch_size=batch_size, shuffle=shuffle

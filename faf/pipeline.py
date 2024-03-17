@@ -28,6 +28,9 @@ class Step(yaml.YAMLObject):
     def set_augment(self, augment: bool):
         self.augment = augment
 
+    def set_ds_f(self, ds_f):
+        self.ds_f = ds_f
+
     @classmethod
     def from_yaml(cls, loader, node):
         values = loader.construct_mapping(node, deep=True)

@@ -13,7 +13,7 @@ class StripClasses(Step):
         finetune_only_last: bool = True,
         finetune_epochs: int = 15,
         finetune_learning_rate: float = 1e-3,
-        finetune_batch_size: int = 64,
+        finetune_batch_size: int = 128,
         *args,
         **kwargs
     ):
@@ -29,6 +29,7 @@ class StripClasses(Step):
         if self.finetune:
             train(
                 net,
+                self.ds_f,
                 self.finetune_epochs,
                 self.finetune_learning_rate,
                 self.finetune_batch_size,

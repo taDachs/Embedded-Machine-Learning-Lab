@@ -15,7 +15,9 @@ from faf.visualization import (
 
 os.makedirs("figures", exist_ok=True)
 
-df = pd.read_csv("results/test/results.csv", converters={"times": ast.literal_eval})
+df = pd.read_csv(
+    "results/for_larger_data/results.csv", converters={"times": ast.literal_eval}
+)
 
 fig, ax = plot_time_against_step(df)
 fig.savefig(os.path.join("figures", "time_against_step.png"))
@@ -26,9 +28,9 @@ fig.savefig(os.path.join("figures", "size_against_step.png"))
 fig, ax = plot_average_precision_against_time(df)
 fig.savefig(os.path.join("figures", "average_precision_against_time.png"))
 
-net = TinyYoloV2.from_saved_state_dict("weights/test/final.pt")
+net = TinyYoloV2.from_saved_state_dict("weights/for_larger_data/step_2_FineTune1.pt")
 
-images = generate_samples(net, num=10, draw_gt=False)
+images = generate_samples(net, num=10, draw_gt=True)
 
 fig, axs = plt.subplots(2, 5, figsize=(10, 5))
 

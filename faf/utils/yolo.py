@@ -56,3 +56,25 @@ def filter_boxes(output_tensor: torch.Tensor, threshold) -> List[torch.Tensor]:
             detected = torch.zeros((0, 6), dtype=x.dtype, device=x.device)
         filtered.append(detected)
     return filtered
+
+
+def filter_boxes_separate(
+    output_tensor: torch.Tensor, threshold_score, threshold_confidence
+) -> List[torch.Tensor]:
+    b, a, h, w, c = output_tensor.shape
+    x = output_tensor.contiguous().view(b, a * h * w, c)
+
+    boxes = x[:, :, 0:4]
+    confidence = x[:, :, 4]
+    scores, idx = torch.max(x[:, :, 5:], -1)
+    idx = idx.float()
+    mask = (scores > threshold_score) & (confidence > threshold_confidence)
+
+    filtered = []
+    for c, s, i, m in zip(boxes, scores, idx, mask):
+        if m.any():
+            detected = torch.cat([c[m, :], s[m, None], i[m, None]], -1)
+        else:
+            detected = torch.zeros((0, 6), dtype=x.dtype, device=x.device)
+        filtered.append(detected)
+    return filtered

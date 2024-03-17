@@ -9,6 +9,17 @@
 from faf.utils.camera import CameraServer
 import time
 import cv2
+from faf.tinyyolov2 import TinyYoloV2
+import torch
+
+from torchvision.transforms import ToTensor
+
+from faf.visualization import vis_single_image
+
+device = torch.device("cuda")
+net = TinyYoloV2.from_saved_state_dict("weights/for_larger_data/final.pt")
+net.to(device)
+net.eval()
 
 now = time.time()
 
@@ -23,6 +34,9 @@ def callback(image):
     fps = f"{int(1/(time.time() - now))}"
     now = time.time()
     image = image[0:320, 0:320, :]
+    frame = ToTensor()(image)
+    frame_gpu = frame.to(device)
+    image = vis_single_image(net, frame_gpu, frame)
     cv2.putText(
         image,
         "fps=" + fps,
@@ -37,7 +51,7 @@ def callback(image):
 
 
 # Initialize the camera with the callback
-cam = CameraServer(callback)
+cam = CameraServer(callback, webcam=True)
 
 
 # The camera stream can be started with cam.start()
@@ -48,9 +62,6 @@ while True:
     try:
         pass
     except:
+        cam.stop()
+        cam.release()
         break
-        
-
-# The camera should always be stopped and released for a new camera is instantiated (calling CameraDisplay(callback) again)
-cam.stop()
-cam.release()

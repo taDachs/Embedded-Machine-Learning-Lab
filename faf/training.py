@@ -31,13 +31,14 @@ class FineTune(Step):
     def run(self, net: TinyYoloV2) -> TinyYoloV2:
         train(
             net,
+            self.ds_f,
             num_epochs=self.epochs,
             learning_rate=self.learning_rate,
             batch_size=self.batch_size,
             data_path=self.data_path,
             device=self.device,
             only_last=self.only_last,
-            augment=self.augment
+            augment=self.augment,
         )
 
         return net
@@ -74,7 +75,15 @@ def train_epoch(
 
 
 def train(
-        net, num_epochs, learning_rate, batch_size, data_path, device, only_last=False, augment=False
+    net,
+    train_ds_f,
+    num_epochs,
+    learning_rate,
+    batch_size,
+    data_path,
+    device,
+    only_last=False,
+    augment=False,
 ):
     if only_last:
         for key, param in net.named_parameters():
@@ -86,7 +95,9 @@ def train(
         lr=learning_rate,
     )
     criterion = YoloLoss(anchors=net.anchors)
-    loader = VOCDataLoaderPerson(augment=augment, batch_size=batch_size, shuffle=True, path=data_path)
+    loader = train_ds_f(
+        augment=augment, batch_size=batch_size, shuffle=True, path=data_path
+    )
 
     loss = []
     for i in range(num_epochs):

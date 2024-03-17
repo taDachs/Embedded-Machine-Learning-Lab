@@ -7,8 +7,12 @@ from .utils.viz import num_to_class
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from faf.data.dataloader import VOCDataLoaderPerson
-from faf.utils.yolo import nms, filter_boxes
+from faf.data.dataloader import (
+    VOCDataLoaderPerson,
+    FullDataLoaderPerson,
+    HumanDatasetDataLoaderPerson,
+)
+from faf.utils.yolo import nms, filter_boxes, filter_boxes_separate
 
 
 def draw_bbox_opencv(
@@ -327,7 +331,9 @@ def plot_average_precision_against_time(
 
 
 def generate_samples(net, draw_gt=True, num=None):
-    loader = VOCDataLoaderPerson(augment=False, batch_size=1, shuffle=True)
+    # loader = VOCDataLoaderPerson(augment=False, batch_size=1, shuffle=True)
+    loader = FullDataLoaderPerson(augment=True, batch_size=1, shuffle=True)
+    # loader = HumanDatasetDataLoaderPerson(augment=True, train=False, batch_size=1, shuffle=True)
 
     images = []
 
@@ -337,7 +343,8 @@ def generate_samples(net, draw_gt=True, num=None):
         outputs = net(inputs)
 
         # filter boxes based on confidence score (class_score*confidence)
-        outputs = filter_boxes(outputs, 0.1)
+        # outputs = filter_boxes(outputs, 0.1)
+        outputs = filter_boxes_separate(outputs, 0.5, 0.3)
 
         # filter boxes based on overlap
         outputs = nms(outputs, 0.25)
@@ -352,9 +359,9 @@ def generate_samples(net, draw_gt=True, num=None):
     return images
 
 
-def vis_single_image(net, image):
-    outputs = net(image[None, ...])
-    outputs = filter_boxes(outputs, 0.1)
+def vis_single_image(net, inputs, image):
+    outputs = net(inputs[None, ...])
+    outputs = filter_boxes_separate(outputs, 0.5, 0.3)
     outputs = nms(outputs, 0.25)
     image = visualize_result(image[None, ...], outputs)
     return image
