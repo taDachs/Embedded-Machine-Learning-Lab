@@ -82,18 +82,10 @@ def visualize_result(
 
             if bboxes[0, i, -1] >= 0:
                 x_min = (
-                    int(
-                        bboxes[0, i, 0] * image_size[0]
-                        - bboxes[0, i, 2] * image_size[0] / 2
-                    )
-                    + pad
+                    int(bboxes[0, i, 0] * image_size[0] - bboxes[0, i, 2] * image_size[0] / 2) + pad
                 )
                 y_min = (
-                    int(
-                        bboxes[0, i, 1] * image_size[1]
-                        - bboxes[0, i, 3] * image_size[1] / 2
-                    )
-                    + pad
+                    int(bboxes[0, i, 1] * image_size[1] - bboxes[0, i, 3] * image_size[1] / 2) + pad
                 )
                 x_max = pad + int(x_min + bboxes[0, i, 2] * image_size[0])
                 y_max = pad + int(y_min + bboxes[0, i, 3] * image_size[1])
@@ -110,18 +102,10 @@ def visualize_result(
         for i in range(target.shape[1]):
             if target[0, i, -1] >= 0:
                 x_min = (
-                    int(
-                        target[0, i, 0] * image_size[0]
-                        - target[0, i, 2] * image_size[0] / 2
-                    )
-                    + pad
+                    int(target[0, i, 0] * image_size[0] - target[0, i, 2] * image_size[0] / 2) + pad
                 )
                 y_min = (
-                    int(
-                        target[0, i, 1] * image_size[1]
-                        - target[0, i, 3] * image_size[1] / 2
-                    )
-                    + pad
+                    int(target[0, i, 1] * image_size[1] - target[0, i, 3] * image_size[1] / 2) + pad
                 )
                 x_max = pad + int(x_min + target[0, i, 2] * image_size[0])
                 y_max = pad + int(y_min + target[0, i, 3] * image_size[1])
@@ -208,9 +192,7 @@ def plot_average_precision_against_step(
     if title is None:
         title = "Time vs Step"
 
-    sns.lineplot(
-        data=df, x=df.index, y="average_precision", label="Average Precision", ax=ax
-    )
+    sns.lineplot(data=df, x=df.index, y="average_precision", label="Average Precision", ax=ax)
 
     sns.scatterplot(data=df, x=df.index, y="average_precision", color="red", ax=ax)
 
@@ -298,9 +280,7 @@ def plot_average_precision_against_time(
 
     df["mean_times"] = df["times"].apply(np.mean)
 
-    sns.lineplot(
-        data=df, x="mean_times", y="average_precision", label="Average Precision", ax=ax
-    )
+    sns.lineplot(data=df, x="mean_times", y="average_precision", label="Average Precision", ax=ax)
 
     sns.scatterplot(data=df, x="mean_times", y="average_precision", color="red", ax=ax)
 
@@ -365,3 +345,23 @@ def vis_single_image(net, inputs, image):
     outputs = nms(outputs, 0.25)
     image = visualize_result(image[None, ...], outputs)
     return image
+
+
+def draw_boxes(image, targets):
+    image_size = image.shape[:2]
+    pad = 0
+
+    for target in targets:
+        if target[-1] >= 0:
+            x_min = int(target[0] * image_size[0] - target[2] * image_size[0] / 2) + pad
+            y_min = int(target[1] * image_size[1] - target[3] * image_size[1] / 2) + pad
+            x_max = pad + int(x_min + target[2] * image_size[0])
+            y_max = pad + int(y_min + target[3] * image_size[1])
+
+            draw_bbox_opencv(
+                image,
+                (x_min, y_min, x_max, y_max),
+                "person",
+                target[4],
+                color=(255, 0, 0),
+            )
