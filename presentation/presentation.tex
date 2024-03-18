@@ -126,8 +126,15 @@
     \hfill
     \begin{subfigure}{0.45\textwidth}
       \centering
-      \includegraphics[scale=0.25]{detections}
+      \includegraphics[scale=0.35]{noise_robustness}
     \end{subfigure}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{Detections}
+  \begin{figure}
+    \centering
+    \includegraphics[scale=0.5]{detections}
   \end{figure}
 \end{frame}
 
@@ -144,11 +151,12 @@
         \end{itemize}
       \item Camera loop
         \begin{itemize}
-        \item Jupyter Notebook
-        \item Socket slow
+        \item TensorRT for faster inference
+        \item Avg. 20fps
         \end{itemize}
       \end{itemize}
     \end{column}
+
     \begin{column}{0.5\textwidth}
       \begin{lstlisting}
 --- !experiment
