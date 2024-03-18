@@ -365,3 +365,22 @@ def draw_boxes(image, targets):
                 target[4],
                 color=(255, 0, 0),
             )
+
+
+def draw_person_boxes(image, boxes, scores):
+    image_size = image.shape[:2]
+
+    for box, score in zip(boxes, scores):
+        if score >= 0:
+            x_min = int(box[0] * image_size[0])
+            y_min = int(box[1] * image_size[1])
+            x_max = int(box[2] * image_size[0])
+            y_max = int(box[3] * image_size[1])
+
+            draw_bbox_opencv(
+                image,
+                (x_min, y_min, x_max, y_max),
+                "person",
+                score,
+                color=(255, 0, 0),
+            )

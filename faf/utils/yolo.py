@@ -1,5 +1,6 @@
 import torch
 from typing import List
+import torchvision
 
 
 def iou(bboxes1, bboxes2):
@@ -20,6 +21,34 @@ def iou(bboxes1, bboxes2):
     return ious
 
 
+def fast_filter_outputs(outputs, score_threshold, iou_threshold):
+    """
+    boxes in xyxy
+    """
+    a, h, w, c = outputs.shape
+    outputs = outputs.contiguous().view(a * h * w, c)
+    boxes = outputs[:, :4]
+    x_min = boxes[:, 0] - boxes[:, 2] / 2
+    y_min = boxes[:, 1] - boxes[:, 3] / 2
+    x_max = x_min + boxes[:, 2]
+    y_max = y_min + boxes[:, 3]
+    boxes = torch.stack((x_min, y_min, x_max, y_max), -1)
+
+    confidence = outputs[:, 4]
+    scores, labels = torch.max(outputs[:, 5:], -1)
+    scores = confidence * scores
+
+    mask = scores > score_threshold
+
+    boxes = boxes[mask]
+    scores = scores[mask]
+    labels = labels[mask]
+
+    keep = torchvision.ops.nms(boxes, scores, iou_threshold)
+
+    return boxes[keep], scores[keep], labels[keep]
+
+
 def nms(filtered_tensor: List[torch.Tensor], threshold: float) -> List[torch.Tensor]:
     result = []
     for x in filtered_tensor:
@@ -29,9 +58,7 @@ def nms(filtered_tensor: List[torch.Tensor], threshold: float) -> List[torch.Ten
         ious = iou(x, x)  # get ious between each bbox in x
 
         # Filter based on iou
-        keep = (ious > threshold).long().triu(1).sum(0, keepdim=True).t().expand_as(
-            x
-        ) == 0
+        keep = (ious > threshold).long().triu(1).sum(0, keepdim=True).t().expand_as(x) == 0
 
         result.append(x[keep].view(-1, 6).contiguous())
     return result
