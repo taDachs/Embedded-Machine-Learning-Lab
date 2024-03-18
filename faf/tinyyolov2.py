@@ -140,10 +140,8 @@ class TinyYoloV2(nn.Module):
                     / nW,  # x center
                     (x[:, :, :, :, 1:2].sigmoid() + range_y[None, None, :, :, None])
                     / nH,  # y center
-                    (x[:, :, :, :, 2:3].exp() * anchor_x[None, :, None, None, None])
-                    / nW,  # Width
-                    (x[:, :, :, :, 3:4].exp() * anchor_y[None, :, None, None, None])
-                    / nH,  # Height
+                    (x[:, :, :, :, 2:3].exp() * anchor_x[None, :, None, None, None]) / nW,  # Width
+                    (x[:, :, :, :, 3:4].exp() * anchor_y[None, :, None, None, None]) / nH,  # Height
                     x[:, :, :, :, 4:5].sigmoid(),  # confidence
                     x[:, :, :, :, 5:].softmax(-1),
                 ],

@@ -32,15 +32,22 @@ onnx_model = onnx.load("tinyyolo_final.onnx")
 onnx.checker.check_model(onnx_model)
 
 
-ort_session = onnxruntime.InferenceSession(
-    "tinyyolo_final.onnx", providers=["CPUExecutionProvider"]
-)
+providers = [
+    (
+        "CUDAExecutionProvider",
+        {
+            "device_id": torch.cuda.current_device(),
+            "user_compute_stream": str(torch.cuda.current_stream().cuda_stream),
+        },
+    )
+]
+# providers = ["CPUExecutionProvider"]
+
+ort_session = onnxruntime.InferenceSession("tinyyolo_final.onnx", providers=providers)
 
 
 def to_numpy(tensor):
-    return (
-        tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
-    )
+    return tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
 
 
 # compute ONNX Runtime output prediction

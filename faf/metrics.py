@@ -11,7 +11,7 @@ import tqdm
 
 
 def test_net_macs(net) -> int:
-    res = summary(net, (1, 3, 320, 320), verbose=0)
+    res = summary(net, (1, 3, 320, 320), verbose=0, device="cpu")
     return res.total_mult_adds
 
 

@@ -7,7 +7,11 @@ from .tinyyolov2 import TinyYoloV2
 from .pipeline import Step
 from .metrics import test_precision, test_net_macs
 from .training import train
-from faf.data.dataloader import VOCDataLoaderPerson, HumanDatasetDataLoaderPerson
+from faf.data.dataloader import (
+    VOCDataLoaderPerson,
+    HumanDatasetDataLoaderPerson,
+    FullDataLoaderPerson,
+)
 
 
 class Pruning(Step):
@@ -44,13 +48,13 @@ class Pruning(Step):
             self.batch_size,
             self.data_path,
             self.device,
-            self.augment,
         )
 
 
 def iterative_prune(
     net: TinyYoloV2,
-    ds_f,
+    train_ds,
+    test_ds,
     prune_ratio: float,
     target_acc: float,
     num_eval_batches: int,
@@ -59,17 +63,10 @@ def iterative_prune(
     batch_size: int,
     data_path: str,
     device: torch.device,
-    augment: bool,
 ) -> TinyYoloV2:
     previous_model = net
 
-    testloader = HumanDatasetDataLoaderPerson(
-        augment=augment,
-        batch_size=batch_size,
-        train=False,
-        shuffle=False,
-        path=data_path,
-    )
+    testloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size, shuffle=False)
 
     aps = []
     sizes = []
@@ -83,7 +80,7 @@ def iterative_prune(
     while ap > target_acc:
         previous_model = net
         net = prune_net(net, prune_ratio)
-        train(net, ds_f, num_train_epochs, learning_rate, batch_size, data_path, device)
+        train(net, train_ds, num_train_epochs, learning_rate, batch_size, device)
         ap, _, _ = test_precision(net, testloader, device, num_batches=num_eval_batches)
         size = test_net_macs(net)
         aps.append(ap)

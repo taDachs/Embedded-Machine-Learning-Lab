@@ -11,6 +11,7 @@ import time
 import cv2
 from faf.tinyyolov2 import TinyYoloV2
 import torch
+from faf.inference import to_onnx
 
 from torchvision.transforms import ToTensor
 
@@ -22,6 +23,9 @@ net.to(device)
 net.eval()
 
 now = time.time()
+
+net.to(torch.device("cpu"))
+net = to_onnx(net, "weights/for_larger_data")
 
 
 # Define a callback function (your detection pipeline)

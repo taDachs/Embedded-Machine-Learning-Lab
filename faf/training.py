@@ -31,7 +31,7 @@ class FineTune(Step):
     def run(self, net: TinyYoloV2) -> TinyYoloV2:
         train(
             net,
-            self.ds_f,
+            self.ds,
             num_epochs=self.epochs,
             learning_rate=self.learning_rate,
             batch_size=self.batch_size,
@@ -69,21 +69,21 @@ def train_epoch(
         optimizer.step()
         epoch_loss.append(loss)
 
-        pbar.set_description(f"[TRAINING] Loss: {loss:.4f}")
+        mean_loss = torch.mean(torch.stack(epoch_loss))
+
+        pbar.set_description(f"[TRAINING] Loss: {mean_loss:.4f}")
 
     return torch.mean(torch.stack(epoch_loss))
 
 
 def train(
     net,
-    train_ds_f,
+    train_ds,
     num_epochs,
     learning_rate,
     batch_size,
-    data_path,
     device,
     only_last=False,
-    augment=False,
 ):
     if only_last:
         for key, param in net.named_parameters():
@@ -95,10 +95,7 @@ def train(
         lr=learning_rate,
     )
     criterion = YoloLoss(anchors=net.anchors)
-    loader = train_ds_f(
-        augment=augment, batch_size=batch_size, shuffle=True, path=data_path
-    )
-
+    loader = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     loss = []
     for i in range(num_epochs):
         logging.info(f"Epoch {i+1}/{num_epochs}")

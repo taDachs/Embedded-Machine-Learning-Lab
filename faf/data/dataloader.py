@@ -130,9 +130,7 @@ def VOCDataLoader(augment=False, train=True, batch_size=32, shuffle=False, path=
     else:
         image_set = "val"
 
-    if not os.path.exists(
-        os.path.join(path, "VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg")
-    ):
+    if not os.path.exists(os.path.join(path, "VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg")):
         dataset = torchvision.datasets.VOCDetection(
             path, year="2012", image_set=image_set, download=True
         )
@@ -152,9 +150,7 @@ def VOCDataLoader(augment=False, train=True, batch_size=32, shuffle=False, path=
     return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-def VOCDataLoaderPerson(
-    augment=False, train=True, batch_size=32, shuffle=False, path=None
-):
+def VOCDataLoaderPerson(augment=False, train=True, batch_size=32, shuffle=False, path=None):
     if path is None:
         path = "data/"
 
@@ -163,9 +159,7 @@ def VOCDataLoaderPerson(
     else:
         image_set = "val"
 
-    if not os.path.exists(
-        os.path.join(path, "VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg")
-    ):
+    if not os.path.exists(os.path.join(path, "VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg")):
         dataset = torchvision.datasets.VOCDetection(
             path, year="2012", image_set=image_set, download=True
         )
@@ -200,9 +194,7 @@ class HumanDataset(torch.utils.data.Dataset):
         self.image_dir = os.path.join(root_dir, "images", subset_name)
         self.label_dir = os.path.join(root_dir, "labels", subset_name)
 
-        self.sample_list = sorted(
-            [name.split(".")[0] for name in os.listdir(self.image_dir)]
-        )
+        self.sample_list = sorted([name.split(".")[0] for name in os.listdir(self.image_dir)])
 
     def __len__(self):
         return len(self.sample_list)
@@ -328,9 +320,7 @@ class TikTokDancingDataset(torch.utils.data.Dataset):
         return image, targets
 
 
-def TikTokDataLoaderPerson(
-    augment=False, train=True, batch_size=32, shuffle=False, path=None
-):
+def TikTokDataLoaderPerson(augment=False, train=True, batch_size=32, shuffle=False, path=None):
     if path is None:
         path = "data/"
 
@@ -353,9 +343,7 @@ def TikTokDataLoaderPerson(
     return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-def FullDataLoaderPerson(
-    augment=False, train=True, batch_size=32, shuffle=False, path=None
-):
+def FullDataLoaderPerson(augment=False, train=True, batch_size=32, shuffle=False, path=None):
     if path is None:
         path = "data/"
 
@@ -380,9 +368,7 @@ def FullDataLoaderPerson(
         transform=VOCTransform(augmentation=augmentation, only_person=True),
     )
 
-    if not os.path.exists(
-        os.path.join(path, "VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg")
-    ):
+    if not os.path.exists(os.path.join(path, "VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg")):
         voc_dataset = torchvision.datasets.VOCDetection(
             path, year="2012", image_set=image_set, download=True
         )
@@ -408,9 +394,7 @@ def FullDataLoaderPerson(
         transform=VOCTransform(augmentation=augmentation, only_person=True),
     )
 
-    full_dataset = torch.utils.data.ConcatDataset(
-        [tiktok_dataset, voc_dataset, human_dataset]
-    )
+    full_dataset = torch.utils.data.ConcatDataset([tiktok_dataset, voc_dataset, human_dataset])
 
     # shuffle once to break up the datasets
     indices = list(range(len(full_dataset)))
@@ -418,6 +402,81 @@ def FullDataLoaderPerson(
     random.shuffle(indices)
     full_dataset = torch.utils.data.Subset(full_dataset, indices)
 
-    return torch.utils.data.DataLoader(
-        full_dataset, batch_size=batch_size, shuffle=shuffle
+    return torch.utils.data.DataLoader(full_dataset, batch_size=batch_size, shuffle=shuffle)
+
+
+def get_dataset_by_name(
+    name,
+    augment=False,
+    train=True,
+    path=None,
+):
+    if path is None:
+        path = "data/"
+
+    if train:
+        image_set = "train"
+    else:
+        image_set = "val"
+
+    if augment:
+        augmentation = Augmentation(crop_p=0, v_flip_p=0)
+    else:
+        augmentation = None
+
+    name = name.lower()
+    assert name in ["full", "human", "voc", "tiktok"]
+
+    tiktok_dataset = TikTokDancingDataset(
+        csv_file=os.path.join(path, "tiktok_dancing", "df.csv"),
+        root_dir=os.path.join(
+            path,
+            "tiktok_dancing",
+            "segmentation_full_body_tik_tok_2615_img",
+            "segmentation_full_body_tik_tok_2615_img",
+        ),
+        transform=VOCTransform(augmentation=augmentation, only_person=True),
     )
+
+    if not os.path.exists(os.path.join(path, "VOCdevkit/VOC2012/JPEGImages/2007_000027.jpg")):
+        voc_dataset = torchvision.datasets.VOCDetection(
+            path, year="2012", image_set=image_set, download=True
+        )
+    voc_dataset = torchvision.datasets.VOCDetection(
+        path,
+        year="2012",
+        image_set=image_set,
+        download=False,
+        transforms=VOCTransform(augmentation=augmentation, only_person=True),
+    )
+
+    with open(os.path.join(path, "person_indices.json"), "r") as fd:
+        indices = list(json.load(fd)[image_set])
+
+    voc_dataset = torch.utils.data.Subset(voc_dataset, indices)
+
+    human_dataset = HumanDataset(
+        subset_name=image_set,
+        root_dir=os.path.join(
+            path,
+            "human_dataset",
+        ),
+        transform=VOCTransform(augmentation=augmentation, only_person=True),
+    )
+
+    full_dataset = torch.utils.data.ConcatDataset([tiktok_dataset, voc_dataset, human_dataset])
+    indices = list(range(len(full_dataset)))
+    random.seed(420)
+    random.shuffle(indices)
+    full_dataset = torch.utils.data.Subset(full_dataset, indices)
+
+    if name == "tiktok":
+        return tiktok_dataset
+    elif name == "voc":
+        return voc_dataset
+    elif name == "human":
+        return human_dataset
+    elif name == "full":
+        return full_dataset
+    else:
+        raise ValueError(name)
