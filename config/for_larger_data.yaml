@@ -1,0 +1,26 @@
+--- !experiment
+start_weights_path: "./weights/voc_pretrained.pt"
+augment: true
+
+steps:
+- !strip_classes
+  finetune: true
+  finetune_epochs: 1
+- !finetune
+  epochs: 15
+  only_last: false
+  learning_rate: 0.001
+  batch_size: 128
+- !finetune
+  epochs: 5
+  only_last: true
+  learning_rate: 0.0001
+  batch_size: 128
+- !pruning
+  target_acc: 0.45
+  prune_ratio: 0.05
+  batch_size: 64
+  num_train_epochs: 10
+  num_eval_batches: 10
+  learning_rate: 0.0001
+- !operator_fusion {}
