@@ -6,7 +6,7 @@ from faf.tinyyolov2 import TinyYoloV2
 import numpy as np
 
 
-def to_onnx(net: TinyYoloV2, weights_path: str):
+def to_onnx(net: TinyYoloV2, weights_path: str, cuda=False):
     net.eval()
     x = torch.randn(1, 3, 320, 320, requires_grad=True)
 
@@ -28,13 +28,17 @@ def to_onnx(net: TinyYoloV2, weights_path: str):
         },  # variable length axes
     )
 
-    return InferenceModel(out_path)
+    return InferenceModel(out_path, cuda)
 
 
 class InferenceModel:
-    def __init__(self, path: str):
+    def __init__(self, path: str, cuda=False):
+        if cuda:
+            providers = [("CUDAExecutionProvider", {"device_id": torch.cuda.current_device()})]
+        else:
+            providers = ["CPUExecutionProvider"]
         self.ort_session = onnxruntime.InferenceSession(
-            path, providers=["CPUExecutionProvider"]
+            path, providers=providers
         )
 
     def __call__(self, x):

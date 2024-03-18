@@ -38,4 +38,4 @@ WORKDIR /
 RUN adduser --home /home/jetson --shell /bin/bash --uid 1000 --disabled-password --gecos "" jetson
 RUN adduser jetson video
 
-RUN pip3 install pyaml pandas
+RUN pip3 install pyaml pandas seaborn albumentations

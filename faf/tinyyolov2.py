@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class TinyYoloV2(nn.Module):
-    def __init__(self, num_classes=20, use_bias=False, use_batch_norm=True):
+    def __init__(self, num_classes=20, use_bias=False, use_batch_norm=True, use_constant_padding=False, use_leaky_relu=True):
         super().__init__()
 
         self._anchors = (
@@ -20,7 +20,15 @@ class TinyYoloV2(nn.Module):
         self.register_buffer("anchors", torch.tensor(self._anchors))
         self.num_classes = num_classes
 
-        self.pad = nn.ReflectionPad2d((0, 1, 0, 1))
+        if use_constant_padding:
+            self.pad = nn.ZeroPad2d((0, 1, 0, 1))
+        else:
+            self.pad = nn.ReflectionPad2d((0, 1, 0, 1))
+
+        if use_leaky_relu:
+            self.relu = lambda x: F.leaky_relu(x, negative_slope=0.1, inplace=True)
+        else:
+            self.relu = lambda x: F.relu(x, inplace=True)
 
         self.conv1 = nn.Conv2d(3, 16, 3, 1, 1, bias=use_bias)
         self.conv2 = nn.Conv2d(16, 32, 3, 1, 1, bias=use_bias)
@@ -77,41 +85,41 @@ class TinyYoloV2(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x) if self.use_batch_norm else x
         x = F.max_pool2d(x, kernel_size=2, stride=2)
-        x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
+        x = self.relu(x)
 
         x = self.conv2(x)
         x = self.bn2(x) if self.use_batch_norm else x
         x = F.max_pool2d(x, kernel_size=2, stride=2)
-        x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
+        x = self.relu(x)
 
         x = self.conv3(x)
         x = self.bn3(x) if self.use_batch_norm else x
         x = F.max_pool2d(x, kernel_size=2, stride=2)
-        x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
+        x = self.relu(x)
 
         x = self.conv4(x)
         x = self.bn4(x) if self.use_batch_norm else x
         x = F.max_pool2d(x, kernel_size=2, stride=2)
-        x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
+        x = self.relu(x)
 
         x = self.conv5(x)
         x = self.bn5(x) if self.use_batch_norm else x
         x = F.max_pool2d(x, kernel_size=2, stride=2)
-        x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
+        x = self.relu(x)
 
         x = self.conv6(x)
         x = self.bn6(x) if self.use_batch_norm else x
         x = self.pad(x)
         x = F.max_pool2d(x, kernel_size=2, stride=1)
-        x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
+        x = self.relu(x)
 
         x = self.conv7(x)
         x = self.bn7(x) if self.use_batch_norm else x
-        x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
+        x = self.relu(x)
 
         x = self.conv8(x)
         x = self.bn8(x) if self.use_batch_norm else x
-        x = F.leaky_relu(x, negative_slope=0.1, inplace=True)
+        x = self.relu(x)
 
         x = self.conv9(x)
         if yolo:
@@ -145,7 +153,7 @@ class TinyYoloV2(nn.Module):
         return x
 
     @classmethod
-    def from_saved_state_dict(cls, path: str):
+    def from_saved_state_dict(cls, path: str, **kwargs):
         sd = torch.load(path)
         use_batch_norm = any("bn" in k for k in sd)
         use_bias = any(f"conv{i}.bias" in sd for i in range(1, 9))
@@ -153,6 +161,6 @@ class TinyYoloV2(nn.Module):
 
         num_classes = last_dim // sd["anchors"].shape[0] - 5
 
-        net = TinyYoloV2(num_classes, use_bias, use_batch_norm)
+        net = TinyYoloV2(num_classes, use_bias, use_batch_norm, **kwargs)
         net.load_state_dict(sd)
         return net
