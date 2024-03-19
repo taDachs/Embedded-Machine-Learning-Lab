@@ -39,3 +39,7 @@ def eval_model(
         "size": size,
         "batch_size": batch_size,
     }
+
+
+def eval_ap(net, ds, batch_size=128, num_test_batches=None, device=torch.device("cpu")):
+    loader = torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=False)
