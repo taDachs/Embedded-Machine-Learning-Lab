@@ -42,7 +42,7 @@ def draw_bbox_opencv(
 
     cv2.rectangle(image, (x_min, y_min), (x_max, y_max), color, thickness)
 
-    label = f"{class_label}: {confidence:.2f}"
+    label = f"{confidence:.2f}"
     (text_width, text_height), _ = cv2.getTextSize(
         label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness
     )
@@ -77,6 +77,7 @@ def visualize_result(
     image = (image * 255).astype(np.uint8)
 
     if output:
+        output = [torch.clamp(d, 0, 1) for d in output]
         bboxes = torch.stack(output, dim=0)
         for i in range(bboxes.shape[1]):
 
