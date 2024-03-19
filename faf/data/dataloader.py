@@ -428,7 +428,7 @@ def get_dataset_by_name(
         image_set = "val"
 
     if augment:
-        augmentation = Augmentation(crop_p=0.3, v_flip_p=0)
+        augmentation = Augmentation(crop_p=0.0, v_flip_p=0)
     else:
         augmentation = None
 

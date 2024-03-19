@@ -1,3 +1,6 @@
 data/*
 yolo_prediction.png
 .ipynb_checkpoints
+weights
+results
+figures
