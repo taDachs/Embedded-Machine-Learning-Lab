@@ -81,6 +81,7 @@ class TorchModel:
         frame = frame.to(self.device)
 
         outputs = self.net(frame)[0]
+        outputs = outputs.detach().cpu()
 
         return outputs
 
@@ -193,7 +194,7 @@ def get_model_by_file(path, device_name: str = "cpu"):
         return OnnxModel(path, device_name)
     elif ending == "trt" or ending == "engine":
         logging.info(f"using tensorrt for {path}")
-        raise NotImplementedError()
+        return TensorRTModel(path)
     else:
         raise ValueError(ending)
 

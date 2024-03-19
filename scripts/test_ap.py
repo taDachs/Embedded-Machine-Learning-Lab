@@ -65,6 +65,8 @@ def main():
         )
         results[os.path.basename(input_model).split(".")[0]] = ap
 
+        del net
+
     logging.info(f"saving results to {args.out_file}")
     with open(args.out_file, "w+") as f:
         json.dump(results, f)
