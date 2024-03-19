@@ -1,0 +1,16 @@
+#!/bin/bash
+docker run \
+    --runtime nvidia \
+    --network host \
+    -it \
+    --rm \
+    --memory 1.5G \
+    --memory-swap 4G \
+    -v $HOME:$HOME \
+    -e ORT_TENSORRT_ENGINE_CACHE_ENABLE=1 \
+    -e PYTHONPATH=$PYTHONPATH \
+    -e HOSTNAME=`hostname` \
+    -p 8888:8888 \
+    --user jetson \
+    --volume /tmp:/tmp \
+    python3-gpu-custom sh -c "cd `pwd` && jupyter-lab --ip 0.0.0.0 --NotebookApp.token='' --NotebookApp.password=''"
