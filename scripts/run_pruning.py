@@ -55,7 +55,7 @@ def main():
     device = torch.device(args.device)
 
     train_ds = get_dataset_by_name(args.dataset, augment=not args.no_augment, train=True)
-    test_ds = get_dataset_by_name(args.dataset, augment=not args.no_augment, train=False)
+    test_ds = get_dataset_by_name(args.dataset, augment=False, train=False)
 
     logging.info(f"Loading model from {args.input_model}")
     net = TinyYoloV2.from_saved_state_dict(args.input_model)
