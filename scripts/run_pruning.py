@@ -47,7 +47,7 @@ def main():
     parser.add_argument(
         "--num-eval-batches",
         type=int,
-        default=1,
+        default=None,
     )
 
     args = parser.parse_args()
