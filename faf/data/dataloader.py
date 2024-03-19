@@ -273,8 +273,14 @@ def tiktok_dancing_dataset(train: bool, path: str) -> torch.utils.data.Dataset:
 
 
 class TikTokDancingDataset(torch.utils.data.Dataset):
-    def __init__(self, csv_file, root_dir, transform=None):
+    def __init__(self, csv_file, root_dir, subset_name, transform=None):
+        assert subset_name in ["val", "train", "full"]
         self.ds_frame = pd.read_csv(csv_file)
+        split = int(len(self.ds_frame) * 0.7)
+        if subset_name == "train":
+            self.ds_frame = self.ds_frame.iloc[:split]
+        elif subset_name == "val":
+            self.ds_frame = self.ds_frame.iloc[split:]
         self.root_dir = root_dir
         self.transform = transform
 
@@ -337,6 +343,7 @@ def TikTokDataLoaderPerson(augment=False, train=True, batch_size=32, shuffle=Fal
             "segmentation_full_body_tik_tok_2615_img",
             "segmentation_full_body_tik_tok_2615_img",
         ),
+        subset_name="train" if train else "test",
         transform=VOCTransform(augmentation=augmentation, only_person=True),
     )
 
@@ -365,6 +372,7 @@ def FullDataLoaderPerson(augment=False, train=True, batch_size=32, shuffle=False
             "segmentation_full_body_tik_tok_2615_img",
             "segmentation_full_body_tik_tok_2615_img",
         ),
+        subset_name=image_set,
         transform=VOCTransform(augmentation=augmentation, only_person=True),
     )
 
@@ -435,6 +443,7 @@ def get_dataset_by_name(
             "segmentation_full_body_tik_tok_2615_img",
             "segmentation_full_body_tik_tok_2615_img",
         ),
+        subset_name=image_set,
         transform=VOCTransform(augmentation=augmentation, only_person=True),
     )
 

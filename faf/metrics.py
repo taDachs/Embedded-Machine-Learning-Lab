@@ -157,13 +157,40 @@ def test_precision(
     net.to(device)
     precisions = []
     recalls = []
-    for i, (batch, targets) in enumerate(tqdm.tqdm(testloader, desc="[EVAL]")):
+    for i, (batch, targets) in enumerate(tqdm.tqdm(testloader, desc="[EVAL]", total=num_batches)):
         if num_batches is not None and i >= num_batches:
             break
 
         batch = batch.to(device)
         targets = targets.to(device)
         outputs = net(batch)
+        outputs = filter_boxes(outputs, filter_threshold)
+        outputs = nms(outputs, nms_threshold)
+
+        for output, target in zip(outputs, targets):
+            precision, recall = precision_recall_levels(target, output)
+            precisions.append(precision)
+            recalls.append(recall)
+    average_precision = ap(precisions, recalls)
+
+    return average_precision, precisions, recalls
+
+
+def test_precision_inference(
+    net, testloader, filter_threshold=0.0, nms_threshold=0.5, num_batches=None
+):
+    precisions = []
+    recalls = []
+    for i, (batch, targets) in enumerate(tqdm.tqdm(testloader, desc="[EVAL]", total=num_batches)):
+        if num_batches is not None and i >= num_batches:
+            break
+
+        batch = batch.permute(0, 2, 3, 1)
+        outputs = []
+        for inputs in batch:
+            outputs.append(net(inputs))
+        outputs = torch.stack(outputs)
+
         outputs = filter_boxes(outputs, filter_threshold)
         outputs = nms(outputs, nms_threshold)
 

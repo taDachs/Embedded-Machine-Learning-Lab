@@ -94,8 +94,28 @@
         \item Person-only-detection, fine-tuning
         \item Iterative pruning
         \item Batch norm optimization
-        \item ONNX Runtime
+        \item Inference
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+      \begin{figure}
+        \includegraphics[scale=0.5]{time_against_step}
+      \end{figure}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Inference}
+  \begin{columns}
+    \begin{column}{0.4\textwidth}
+      \begin{itemize}
+        \item ONNX
         \item TensorRT
+        \begin{itemize}
+          \item TensorRT supports only a subset of ONNX spec
+          \item \texttt{ReflectivePad} $\rightarrow{}$ \texttt{ConstantPad}
+          \item Simplification of graph with \texttt{onnx-simplifier}\footnote{\url{https://github.com/daquexian/onnx-simplifier}}
+        \end{itemize}
       \end{itemize}
     \end{column}
     \begin{column}{0.6\textwidth}
