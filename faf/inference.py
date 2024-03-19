@@ -173,7 +173,7 @@ class TensorRTModel:
         cuda.memcpy_dtoh_async(self.h_output, self.d_output, self.stream)
         self.stream.synchronize()
 
-        outputs = torch.tensor(self.h_output)
+        outputs = torch.tensor(self.h_output[0])
         return outputs
 
     def __del__(self):
