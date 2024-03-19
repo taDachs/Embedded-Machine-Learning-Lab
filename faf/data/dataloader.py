@@ -261,33 +261,34 @@ def HumanDatasetDataLoaderPerson(
 
 def tiktok_dancing_dataset(train: bool, path: str) -> torch.utils.data.Dataset:
     return TikTokDancingDataset(
-        csv_file=os.path.join(path, "tiktok_dancing", "df.csv"),
-        root_dir=os.path.join(
-            path,
-            "tiktok_dancing",
-            "segmentation_full_body_tik_tok_2615_img",
-            "segmentation_full_body_tik_tok_2615_img",
-        ),
+        subset_name = "train" if train else "val",
+        root_dir=os.path.join(path, "tiktok_dancing"),
         transform=VOCTransform(train=train, only_person=True),
     )
 
 
 class TikTokDancingDataset(torch.utils.data.Dataset):
-    def __init__(self, csv_file, root_dir, transform=None):
-        self.ds_frame = pd.read_csv(csv_file)
+    def __init__(self, subset_name, root_dir, transform=None):
         self.root_dir = root_dir
         self.transform = transform
 
+        assert subset_name in ["train", "val"]
+
+        self.image_dir = os.path.join(root_dir, "images", subset_name)
+        self.mask_dir = os.path.join(root_dir, "masks", subset_name)
+
+        self.sample_list = sorted([name.split(".")[0] for name in os.listdir(self.image_dir)])
+
     def __len__(self):
-        return len(self.ds_frame)
+        return len(self.sample_list)
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_name = os.path.join(self.root_dir, self.ds_frame.iloc[idx, 1])
+        img_name = os.path.join(self.image_dir, self.sample_list[idx] + ".png")
         image = Image.open(img_name).convert("RGB")
-        mask_name = os.path.join(self.root_dir, self.ds_frame.iloc[idx, 2])
+        mask_name = os.path.join(self.mask_dir, self.sample_list[idx] + ".png")
         mask = Image.open(mask_name)
         mask = torch.tensor(np.array(mask))
         rows, cols = torch.nonzero(mask[..., 0], as_tuple=True)
@@ -320,7 +321,10 @@ class TikTokDancingDataset(torch.utils.data.Dataset):
         return image, targets
 
 
-def TikTokDataLoaderPerson(augment=False, train=True, batch_size=32, shuffle=False, path=None):
+def TikTokDataLoaderPerson(
+        augment=False, train=True, batch_size=32, shuffle=False, path=None
+):
+    subset_name = "train" if train else "val"
     if path is None:
         path = "data/"
 
@@ -330,13 +334,8 @@ def TikTokDataLoaderPerson(augment=False, train=True, batch_size=32, shuffle=Fal
         augmentation = None
 
     dataset = TikTokDancingDataset(
-        csv_file=os.path.join(path, "tiktok_dancing", "df.csv"),
-        root_dir=os.path.join(
-            path,
-            "tiktok_dancing",
-            "segmentation_full_body_tik_tok_2615_img",
-            "segmentation_full_body_tik_tok_2615_img",
-        ),
+        subset_name=subset_name,
+        root_dir=os.path.join(path, "tiktok_dancing"),
         transform=VOCTransform(augmentation=augmentation, only_person=True),
     )
 
@@ -358,13 +357,8 @@ def FullDataLoaderPerson(augment=False, train=True, batch_size=32, shuffle=False
         augmentation = None
 
     tiktok_dataset = TikTokDancingDataset(
-        csv_file=os.path.join(path, "tiktok_dancing", "df.csv"),
-        root_dir=os.path.join(
-            path,
-            "tiktok_dancing",
-            "segmentation_full_body_tik_tok_2615_img",
-            "segmentation_full_body_tik_tok_2615_img",
-        ),
+        subset_name=image_set,
+        root_dir=os.path.join(path, "tiktok_dancing"),
         transform=VOCTransform(augmentation=augmentation, only_person=True),
     )
 
