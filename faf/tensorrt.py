@@ -7,13 +7,13 @@ from jetcam.utils import bgr8_to_jpeg
 from faf.utils.camera import Camera
 import time
 import torch
-from .utils.yolo import nms, filter_boxes
-from .visualization import draw_boxes
+from faf.utils.yolo import nms, filter_boxes
+from faf.visualization import draw_boxes
 import cv2
 
 
 class CameraTensorrtDisplay:
-    def __init__(self, engine_path, lazy_camera_init: bool = False):
+    def __init__(self, engine_path, lazy_camera_init: bool = False, crop_to_fill=False):
         self.lazy_camera_init = lazy_camera_init
         self.engine_path = engine_path
         if not self.lazy_camera_init:
@@ -26,6 +26,7 @@ class CameraTensorrtDisplay:
 
         self._processing_frame = False
         self.fps = None
+        self.crop_to_fill = crop_to_fill
 
     def initialize_camera(self):
         print("Initializing camera...")
@@ -88,8 +89,25 @@ class CameraTensorrtDisplay:
                 if not re:
                     print("error capturing frame")
                     continue
-                image = image[0:320, 0:320, :]
+
+                if self.crop_to_fill:
+                    image = image[0:320, 0:320, :]
+                else:
+                    width = 640
+                    height = 360
+                    scale = min(320/width, 320/height)
+
+                    image = cv2.resize(image, fx=scale, fy=scale, dsize=None)
+
+                    pad_height = max(0, 320 - scale*height)
+                    top_pad = int(pad_height // 2)
+                    bottom_pad = int(pad_height - top_pad)
+
+                    # Pad the image
+                    image = cv2.copyMakeBorder(image, top_pad, bottom_pad, 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+
                 frame = np.array(image)
+
                 frame = (frame.T / 255.0).astype(np.float32)
                 frame = np.expand_dims(frame, axis=0)
                 input_data = np.ascontiguousarray(frame)
@@ -103,8 +121,6 @@ class CameraTensorrtDisplay:
 
                 fps = f"{int(1/(time.time() - now))}"
                 now = time.time()
-
-                image = image[0:320, 0:320, :]
 
                 outputs = torch.tensor(h_output)
                 outputs = filter_boxes(outputs, 0.3)
