@@ -170,11 +170,6 @@
         \item Reproducibility
         \item Version control
         \end{itemize}
-      \item Camera loop
-        \begin{itemize}
-        \item TensorRT for faster inference
-        \item Avg. 20fps
-        \end{itemize}
       \end{itemize}
     \end{column}
 
@@ -199,6 +194,20 @@ steps:
     \end{column}
   \end{columns}
 \end{frame}
+
+\begin{frame}{Pipeline}
+  \begin{center}
+    \begin{itemize}
+      \item jetcam
+      \item inference using framework
+        \begin{itemize}
+          \item separate thread for camera creates problem for tensorrt
+        \end{itemize}
+      \item faster NMS by using torch implementation (30\% faster than default implementation)
+    \end{itemize}
+  \end{center}
+\end{frame}
+
 
 \section{Live demo}
 \begin{frame}

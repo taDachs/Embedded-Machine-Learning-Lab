@@ -72,7 +72,7 @@ class TorchModel:
 
     def __call__(self, x):
         frame = np.array(x)
-        frame = frame / 255.0
+        # frame = frame / 255.0
         frame = np.expand_dims(frame, axis=0)
         frame = frame.transpose(0, 3, 1, 2)
         frame = frame.astype(np.float32)
@@ -112,7 +112,7 @@ class OnnxModel:
 
     def __call__(self, x):
         frame = np.array(x)
-        frame = frame / 255.0
+        # frame = frame / 255.0
         frame = np.expand_dims(frame, axis=0)
         frame = frame.transpose(0, 3, 1, 2)
         frame = frame.astype(np.float32)
@@ -161,7 +161,7 @@ class TensorRTModel:
 
     def __call__(self, x):
         frame = np.array(x)
-        frame = frame / 255.0
+        # frame = frame / 255.0
         frame = np.expand_dims(frame, axis=0)
         frame = frame.transpose(0, 3, 1, 2)
         frame = frame.astype(np.float32)
